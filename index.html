@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Trường Dành Cho Người Hiểu</title>
+    <title>S-SYSTEM | VAA GENESIS COMMAND</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -37,8 +37,10 @@
                 </div>
             </div>
             <nav class="nav-links">
-                <li class="active"><i class="fas fa-laptop-code"></i> Terminal</li>
-                <li onclick="toggleMusic()" id="music-toggle" style="color:var(--neon-blue);"><i class="fas fa-music"></i> [ BẬT NHẠC ]</li>
+                <li id="nav-academic" class="active" onclick="switchTab('academic')"><i class="fas fa-book-reader"></i> [ HỌC TẬP ]</li>
+                <li id="nav-casino" onclick="switchTab('casino')"><i class="fas fa-gamepad"></i> [ GIẢI TRÍ ]</li>
+                
+                <li onclick="toggleMusic()" id="music-toggle" style="color:var(--neon-blue); margin-top:10px;"><i class="fas fa-music"></i> [ BẬT NHẠC ]</li>
                 <li onclick="logout()" class="logout-link"><i class="fas fa-power-off"></i> [ NGẮT KẾT NỐI ]</li>
             </nav>
         </aside>
@@ -46,16 +48,13 @@
         <main class="main-content">
             <div id="student-view" style="display: none;">
                 <div class="stats-row" style="margin-bottom: 20px;">
-                    <div class="stat-card glass-box center-content" style="border-top: 3px solid var(--neon-gold);">
-                        <span style="color:#888;">TÀI SẢN (PP)</span>
-                        <h1 id="display-pp" class="text-gold" style="font-size: 3.5rem; margin:0;">0</h1>
-                    </div>
-                    <div class="stat-card glass-box center-content" style="border-top: 3px solid var(--neon-blue);">
-                        <span style="color:var(--neon-blue); font-weight:900;"><i class="fas fa-dice"></i> GACHA HỘP MÙ</span>
-                        <button onclick="rollGacha()" class="btn-cyber" style="margin-top:10px; background:transparent; color:var(--neon-blue); border-color:var(--neon-blue);">[ 5K PP / LẦN ]</button>
+                    <div class="stat-card glass-box center-content" style="border-top: 3px solid var(--neon-gold); width: 100%; padding: 15px;">
+                        <span style="color:#888; font-size:12px; letter-spacing:2px;">TÀI SẢN TÍCH LŨY (PP)</span>
+                        <h1 id="display-pp" class="text-gold" style="font-size: 4rem; margin:0; text-shadow: 0 0 20px rgba(255,215,0,0.5);">0</h1>
                     </div>
                 </div>
-                <div class="grid-layout student-grid">
+
+                <div id="tab-academic" class="grid-layout student-grid">
                     <div class="col-main">
                         <div class="glass-box section-card" style="margin-bottom:20px;">
                             <div class="card-header"><h3><i class="fas fa-trophy"></i> BXH LỚP CP</h3></div>
@@ -79,12 +78,53 @@
                             <button onclick="sendExpelRequest()" class="btn-outline-gold w-100">[ GỬI ]</button>
                             <div class="table-container" style="max-height: 100px; margin-top:10px;"><table class="cyber-table"><tbody id="student-inbox"></tbody></table></div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="tab-casino" class="grid-layout student-grid" style="display: none;">
+                    <div class="col-main">
+                        <div class="glass-box section-card" style="border-color:var(--neon-blue);">
+                            <div class="card-header" style="border-bottom: 1px solid var(--neon-blue);">
+                                <h3 class="text-blue"><i class="fas fa-dice"></i> KHU VỰC CASINO TỰ ĐỘNG</h3>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                                <div style="background: rgba(0,240,255,0.05); border: 1px solid rgba(0,240,255,0.3); padding: 15px; border-radius: 8px;">
+                                    <h4 class="text-blue" style="margin: 0 0 5px 0;"><i class="fas fa-box-open"></i> GACHA HỘP MÙ</h4>
+                                    <p style="font-size: 11px; color:#aaa; margin: 0 0 10px 0;">5% Jackpot (+50k) | 15% X2 (+10k) | 80% Trắng tay (-5k)</p>
+                                    <button onclick="rollGacha()" class="btn-cyber w-100" style="padding: 10px; font-size:12px;">[ QUAY - 5K PP ]</button>
+                                </div>
+
+                                <div style="background: rgba(255,215,0,0.05); border: 1px solid rgba(255,215,0,0.3); padding: 15px; border-radius: 8px;">
+                                    <h4 class="text-gold" style="margin: 0 0 5px 0;"><i class="fas fa-coins"></i> TUNG ĐỒNG XU</h4>
+                                    <p style="font-size: 11px; color:#aaa; margin: 0 0 10px 0;">Cược PP tùy ý. Đoán Sấp/Ngửa. Thắng x2 tiền cược!</p>
+                                    <div style="display:flex; gap:10px;">
+                                        <button onclick="coinFlip('SAP')" class="btn-outline-gold w-100" style="padding: 10px; font-size:12px;">[ SẤP ]</button>
+                                        <button onclick="coinFlip('NGUA')" class="btn-outline-gold w-100" style="padding: 10px; font-size:12px;">[ NGỬA ]</button>
+                                    </div>
+                                </div>
+
+                                <div style="grid-column: span 2; background: rgba(255,0,60,0.05); border: 1px solid rgba(255,0,60,0.3); padding: 15px; border-radius: 8px;">
+                                    <h4 class="text-red" style="margin: 0 0 5px 0;"><i class="fas fa-hand-rock"></i> KÉO BÚA BAO vs HỆ THỐNG</h4>
+                                    <p style="font-size: 11px; color:#aaa; margin: 0 0 10px 0;">Cược PP. Thắng x2, Hòa hoàn tiền, Thua mất sạch!</p>
+                                    <div style="display:flex; gap:10px;">
+                                        <button onclick="rpsGame('BUA')" class="btn-cyber w-100" style="padding: 12px; font-size:14px; border-color:#888; color:#fff;">✊ BÚA</button>
+                                        <button onclick="rpsGame('KEO')" class="btn-cyber w-100" style="padding: 12px; font-size:14px; border-color:#888; color:#fff;">✌️ KÉO</button>
+                                        <button onclick="rpsGame('BAO')" class="btn-cyber w-100" style="padding: 12px; font-size:14px; border-color:#888; color:#fff;">✋ BAO</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-side">
                         <div class="glass-box section-card">
-                            <div class="card-header"><h3> TOP 50 PP</h3></div>
-                            <div class="table-container" style="max-height: 300px;"><table class="cyber-table"><thead><tr><th>UID</th><th>Tên</th><th>PP</th></tr></thead><tbody id="top-50-students"></tbody></table></div>
+                            <div class="card-header"><h3><i class="fas fa-crown"></i> TOP 50 ĐẠI GIA PP</h3></div>
+                            <div class="table-container" style="max-height: 400px;"><table class="cyber-table"><thead><tr><th>UID</th><th>Tên</th><th>PP</th></tr></thead><tbody id="top-50-students"></tbody></table></div>
                         </div>
                     </div>
                 </div>
+
             </div>
 
             <div id="teacher-view" style="display: none;">
@@ -126,6 +166,11 @@
                                 <select id="q-correct" class="cyber-input" style="grid-column: span 2;"><option value="A">Đúng A</option><option value="B">Đúng B</option></select>
                                 <input type="number" id="q-pp" placeholder="PP" class="cyber-input"><input type="number" id="q-penalty" placeholder="Phạt" class="cyber-input">
                                 <input type="number" id="q-limit" placeholder="Slot" class="cyber-input"><input type="number" id="q-max-attempts" placeholder="Lượt" class="cyber-input">
+                                <input type="number" id="q-time" placeholder="Giây (0=Không)" class="cyber-input">
+                                <div style="display: flex; align-items: center; background: rgba(0,0,0,0.6); border: 1px solid #30363d; border-radius: 8px; padding: 0 5px;">
+                                    <span style="font-size: 10px; color:#888; margin-right: 5px;">Hạn:</span>
+                                    <input type="date" id="q-deadline" class="cyber-input" style="border:none; padding:10px 5px; flex:1; outline:none; background:transparent;">
+                                </div>
                             </div>
                             <button onclick="adminCreateQuest()" class="btn-cyber w-100" style="margin-top:10px;">[ ĐĂNG ]</button>
                         </div>
@@ -143,7 +188,10 @@
 
     <div id="quiz-modal" class="overlay" style="display:none; z-index: 2000;">
         <div class="glass-box login-panel" style="border-color:var(--neon-gold); text-align:left; width:500px;">
-            <h3 id="quiz-title" class="text-gold"></h3>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <h3 id="quiz-title" class="text-gold" style="margin-top:0;"></h3>
+                <h3 id="quiz-timer" class="text-red glow-pulse" style="margin-top:0; white-space: nowrap;"></h3>
+            </div>
             <p id="quiz-question" style="font-size:18px; margin:20px 0;"></p>
             <p id="quiz-info" style="font-size:12px; color:#888; margin-bottom:15px;"></p>
             <button onclick="submitQuiz('A')" class="btn-cyber w-100" style="background:rgba(0,0,0,0.5); text-align:left; margin-bottom:10px; padding:15px;"><strong class="text-gold">A.</strong> <span id="quiz-optA"></span></button>
@@ -151,6 +199,7 @@
             <button onclick="closeQuizModal()" class="btn-outline-gold w-100">[ BỎ CHẠY ]</button>
         </div>
     </div>
+    
     <div id="view-grades-modal" class="overlay" style="display:none; z-index: 1000;">
         <div class="glass-box login-panel" style="width:850px; max-height:85vh; display:flex; flex-direction:column; padding:30px;">
             <h3 class="text-gold">[ HỒ SƠ ĐIỂM CHI TIẾT ]</h3>
@@ -161,6 +210,7 @@
             <button onclick="closeViewGradesModal()" class="btn-cyber w-100">[ ĐÓNG ]</button>
         </div>
     </div>
+    
     <div id="subject-modal" class="overlay" style="display:none; z-index: 1000;">
         <div class="glass-box login-panel" style="width:450px;">
             <h3 class="text-gold">[ NHẬP ĐIỂM MÔN MỚI ]</h3>
