@@ -10,7 +10,7 @@ let flightInterval; let isFlying = false; let currentMultiplier = 0.00; let cras
 let fbBet = 0; let fbChoice = '';
 
 // ==========================================
-// 🔔 HỆ THỐNG CUSTOM ALERT CÓ ANIMATION HỒI HỘP
+// 🔔 HỆ THỐNG CUSTOM ALERT
 // ==========================================
 window.showResult = (title, message, isWin) => {
     const modal = document.getElementById('result-modal'); const t = document.getElementById('result-title'); const msg = document.getElementById('result-msg'); const icon = document.getElementById('result-icon'); const btn = document.getElementById('result-close-btn');
@@ -431,7 +431,64 @@ function endFlightCrash() {
 }
 
 // ==========================================
-// 🎲 CÁC GAME NHỎ (ĐÃ NERF VÀ TÍCH HỢP HỒI HỘP)
+// 📈 TRADING CRYPTO LIVE (CANVAS)
+// ==========================================
+let cryptoInterval; let isCryptoTrading = false; let cMult = 1.00; let cCrash = 1.00; let cBet = 0;
+let cryptoData = []; let chartX = 0;
+window.openCryptoGame = () => { if(isCryptoTrading) return; document.getElementById('crypto-modal').style.display = 'flex'; resetCryptoUI(); };
+window.closeCryptoGame = () => { if(isCryptoTrading) return alert("Đang gồng lãi, không thể thoát!"); document.getElementById('crypto-modal').style.display = 'none'; };
+function resetCryptoUI() {
+    document.getElementById('crypto-multiplier').innerText = 'x1.00'; document.getElementById('crypto-multiplier').style.color = 'var(--neon-gold)';
+    document.getElementById('crypto-rugpull').style.display = 'none';
+    const btn = document.getElementById('crypto-action-btn'); btn.innerText = '[ 🚀 MUA VÀO & GỒNG LÃI ]'; btn.onclick = window.startCryptoLive; btn.style.borderColor = 'var(--neon-gold)'; btn.style.color = 'var(--neon-gold)';
+    document.getElementById('crypto-bet').disabled = false; document.getElementById('crypto-bet').value = '';
+    const canvas = document.getElementById('cryptoCanvas'); const ctx = canvas.getContext('2d'); ctx.clearRect(0,0, canvas.width, canvas.height);
+}
+window.startCryptoLive = async () => {
+    if(isCryptoTrading) return; const bet = parseInt(document.getElementById('crypto-bet').value); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
+    const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; if(currentPP < bet) return window.showResult("NGHÈO", "Bạn không đủ vốn!", false);
+    await update(ref(db, `users/${uid}`), { pp: currentPP - bet }); cBet = bet; isCryptoTrading = true;
+    
+    const e = 100 / (Math.random() * 100); cCrash = parseFloat(Math.max(1.00, Math.min(100.00, e)).toFixed(2)); if(Math.random() < 0.08) cCrash = 1.00;
+    
+    document.getElementById('crypto-bet').disabled = true; const btn = document.getElementById('crypto-action-btn'); btn.innerText = '[ 💰 CHỐT LỜI NGAY! ]'; btn.style.borderColor = 'var(--neon-green)'; btn.style.color = 'var(--neon-green)'; btn.onclick = window.cashOutCrypto;
+    cMult = 1.00; cryptoData = [{x: 0, y: 300}]; chartX = 0; let speed = 0.003;
+    const canvas = document.getElementById('cryptoCanvas'); const ctx = canvas.getContext('2d');
+    
+    cryptoInterval = setInterval(() => {
+        cMult += speed; speed += 0.0002;
+        let visualMult = cMult + (Math.random() * 0.05 - 0.02);
+        document.getElementById('crypto-multiplier').innerText = `x${Math.max(1.00, visualMult).toFixed(2)}`;
+        
+        chartX += 3; let chartY = 300 - ((cMult - 1) * 30); if(chartY < 20) chartY = 20 + Math.random()*10;
+        cryptoData.push({x: chartX, y: chartY});
+        
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        ctx.beginPath(); ctx.moveTo(cryptoData[0].x, cryptoData[0].y);
+        ctx.strokeStyle = '#00ff80'; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = '#00ff80';
+        for(let i=1; i<cryptoData.length; i++) { ctx.lineTo(cryptoData[i].x, cryptoData[i].y); }
+        ctx.stroke();
+        
+        if(chartX >= 660) cryptoData.shift();
+
+        if(cMult >= cCrash) {
+            clearInterval(cryptoInterval); isCryptoTrading = false;
+            document.getElementById('crypto-multiplier').style.color = 'var(--neon-red)'; document.getElementById('crypto-rugpull').style.display = 'block';
+            const btn = document.getElementById('crypto-action-btn'); btn.innerText = 'CHÁY TÀI KHOẢN!'; btn.onclick = null; btn.style.borderColor = 'var(--neon-red)'; btn.style.color = 'var(--neon-red)';
+            ctx.lineTo(chartX, 300); ctx.strokeStyle = 'red'; ctx.shadowColor = 'red'; ctx.stroke();
+            setTimeout(() => { window.showResult("RUG PULL!", `Sàn đã úp sọt ở x${cCrash.toFixed(2)}.\nMất trắng ${cBet.toLocaleString()} PP!`, false); resetCryptoUI(); }, 1500);
+        }
+    }, 40);
+};
+window.cashOutCrypto = async () => {
+    if(!isCryptoTrading) return; clearInterval(cryptoInterval); isCryptoTrading = false;
+    const winAmount = Math.floor(cBet * cMult); const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; await update(ref(db, `users/${uid}`), { pp: currentPP + winAmount });
+    document.getElementById('crypto-multiplier').style.color = 'var(--neon-gold)'; const btn = document.getElementById('crypto-action-btn'); btn.innerText = 'ĐÃ CHỐT LỜI X' + cMult.toFixed(2); btn.onclick = null; btn.style.borderColor = '#555'; btn.style.color = '#555';
+    setTimeout(() => { window.showResult("CHỐT LỜI", `Xả hàng an toàn tại x${cMult.toFixed(2)}.\nĂn ${(winAmount).toLocaleString()} PP!`, true); resetCryptoUI(); }, 1000);
+};
+
+// ==========================================
+// 🎲 MINIGAMES CƠ BẢN
 // ==========================================
 async function executeBet(gameName, logicCallback) {
     let bet = prompt(`[ ${gameName} ]\nNhập số PP bạn muốn đặt cược:`); if(!bet) return; bet = parseInt(bet); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
@@ -439,28 +496,18 @@ async function executeBet(gameName, logicCallback) {
     if(currentPP < bet) return window.showResult("NGHÈO", `Bạn chỉ có ${currentPP.toLocaleString()} PP. Không đủ cược!`, false);
     const res = await logicCallback(bet, currentPP); if(res === null) return; 
     const { payout, message, title, isWin } = res;
-    
     const modal = document.getElementById('result-modal'); const t = document.getElementById('result-title'); const msg = document.getElementById('result-msg'); const icon = document.getElementById('result-icon'); const btn = document.getElementById('result-close-btn');
     t.innerText = "ĐANG XỬ LÝ..."; t.className = "text-blue glow-pulse"; msg.innerHTML = ""; icon.className = "fas fa-spinner fa-spin fa-3x text-blue"; btn.style.display = 'none'; modal.style.display = 'flex';
-
-    setTimeout(async () => {
-        const freshSnap = await get(ref(db, `users/${uid}`)); const freshPP = Number(freshSnap.val().pp) || 0;
-        await update(ref(db, `users/${uid}`), { pp: freshPP + payout });
-        t.innerText = title; t.className = isWin ? 'text-gold glow-pulse' : 'text-red glow-pulse';
-        msg.innerHTML = `${message}<br><br>=> PP HIỆN TẠI: ${(freshPP + payout).toLocaleString()}`;
-        icon.className = isWin ? "fas fa-trophy fa-3x text-gold" : "fas fa-skull fa-3x text-red";
-        btn.style.display = 'block';
-    }, 1500); 
+    setTimeout(async () => { const freshSnap = await get(ref(db, `users/${uid}`)); const freshPP = Number(freshSnap.val().pp) || 0; await update(ref(db, `users/${uid}`), { pp: freshPP + payout }); t.innerText = title; t.className = isWin ? 'text-gold glow-pulse' : 'text-red glow-pulse'; msg.innerHTML = `${message}<br><br>=> PP HIỆN TẠI: ${(freshPP + payout).toLocaleString()}`; icon.className = isWin ? "fas fa-trophy fa-3x text-gold" : "fas fa-skull fa-3x text-red"; btn.style.display = 'block'; }, 1500); 
 }
 
 window.rollGacha = async () => { const snap = await get(ref(db, `users/${uid}`)); const c = Number(snap.val().pp) || 0; if(c < 5000) return window.showResult("NGHÈO", "Bạn không đủ 5,000 PP!", false); const r = Math.random()*100; let n = c - 5000, m = "Trắng tay... Bạn mất 5,000 PP 💀", t = "BAY MÀU", win = false; if(r > 98) { n += 50000; m = "Trúng 50,000 PP 🎉"; t = "JACKPOT!!!"; win = true; } else if(r > 88) { n += 10000; m = "Lời 10,000 PP 💵"; t = "X2 TÀI SẢN"; win = true; } await update(ref(db, `users/${uid}`), { pp: n }); window.showResult(t, m, win); };
-window.playClawMachine = () => executeBet("GẮP GẤU BÔNG", async (bet) => { const r = Math.random(); if(r < 0.05) return { payout: bet * 10, message: `Trời ơi!!! Bạn gắp được 🦄 KỲ LÂN NGÂN HÀ (Siêu Hiếm)!\nThắng ${(bet*10).toLocaleString()} PP!`, title: "BÀN TAY VÀNG", isWin: true }; if(r < 0.35) return { payout: bet * 2, message: `Tuyệt vời! Bạn gắp được 🐻 Gấu Teddy dễ thương!\nThắng ${(bet*2).toLocaleString()} PP!`, title: "GẮP THÀNH CÔNG", isWin: true }; return { payout: -bet, message: `Tuột càng mất rồi! Con gấu rơi phịch xuống lỗ.\nBạn mất ${bet.toLocaleString()} PP!`, title: "TUỘT CÀNG", isWin: false }; });
-window.playTarot = () => executeBet("BÓI TAROT", async (bet) => { let choice = prompt("Có 3 lá bài đang úp (1, 2, 3).\nBạn chọn lật lá bài số mấy?"); if(!['1','2','3'].includes(choice)) return null; const cards = [ { name: "THE SUN ☀️", mult: 5, msg: "Tương lai rực rỡ, tài lộc dồi dào!" }, { name: "THE LOVERS 💕", mult: 2, msg: "Tình duyên chớm nở, may mắn nhân đôi!" }, { name: "THE TOWER 🌩️", mult: 0, msg: "Tai họa giáng xuống, tiền tài tiêu tán!" }, { name: "DEATH 💀", mult: 0, msg: "Kết thúc đau thương, mất sạch tiền cược!" }, { name: "WHEEL OF FORTUNE 🎡", mult: 1.5, msg: "Vòng quay định mệnh, sinh lời vừa phải." } ]; const drawn = cards[Math.floor(Math.random() * cards.length)]; const profit = Math.floor(bet * drawn.mult) - bet; if (profit > 0) return { payout: profit, message: `Bạn đã lật trúng lá ${drawn.name}\n${drawn.msg}\nNhận được ${(profit + bet).toLocaleString()} PP!`, title: "THÔNG ĐIỆP VŨ TRỤ", isWin: true }; if (profit === 0) return { payout: 0, message: `Bạn đã lật trúng lá ${drawn.name}\n${drawn.msg}\nHòa vốn!`, title: "BÌNH YÊN", isWin: true }; return { payout: profit, message: `Bạn đã lật trúng lá ${drawn.name}\n${drawn.msg}\nMất ${bet.toLocaleString()} PP!`, title: "VẬN ĐEN", isWin: false }; });
-window.playCrypto = () => executeBet("ĐẦU TƯ CRYPTO", async (bet) => { let currentVal = bet, month = 1, crashed = false; while(month <= 5) { const multiplier = (Math.random() * 2.5 + 0.1).toFixed(2); currentVal = Math.floor(currentVal * multiplier); if (currentVal < bet * 0.15) { crashed = true; break; } const choice = confirm(`📊 THÁNG ${month}/5:\nGiá trị tài sản: ${currentVal.toLocaleString()} PP (Hệ số x${multiplier})\n\n[OK] = GỒNG LÃI (Qua tháng sau)\n[CANCEL] = CHỐT LỜI NGAY!`); if (!choice) { const profit = currentVal - bet; return { payout: profit, message: `Bạn đã chốt lời ở Tháng ${month}!\nThu về: ${currentVal.toLocaleString()} PP.`, title: profit >= 0 ? "CHỐT LỜI" : "CẮT LỖ", isWin: profit >= 0 }; } month++; } if (crashed) return { payout: -bet, message: `Thị trường SỤP ĐỔ ở tháng ${month}!\nTài sản bay màu. Bạn mất sạch ${bet.toLocaleString()} PP!`, title: "CHÁY TÀI KHOẢN", isWin: false }; const profit = currentVal - bet; return { payout: profit, message: `CHÚC MỪNG DIAMOND HANDS! 💎🙌\nĐã gồng qua 5 tháng. Thu về: ${currentVal.toLocaleString()} PP!`, title: "THÀNH TỶ PHÚ", isWin: true }; });
-window.playSquidGame = () => executeBet("CẦU KÍNH SQUID GAME", async (bet) => { let step = 1; while(step <= 5) { let choice = prompt(`🌉 BƯỚC ${step}/5:\nCó 2 tấm kính. Nhập T (Trái) hoặc P (Phải):`); if(!choice) return { payout: -bet, message: `Bạn đã bỏ cuộc giữa chừng và rơi xuống vực.\nMất sạch ${bet.toLocaleString()} PP!`, title: "CHẾT NHÁT", isWin: false }; choice = choice.toUpperCase(); if(choice !== 'T' && choice !== 'P') { alert("Chỉ nhập T hoặc P."); continue; } const isSafe = Math.random() < 0.40; if (isSafe) { alert(`Bước ${step} AN TOÀN! Tấm kính không vỡ.`); step++; } else return { payout: -bet, message: `RẮC... XOẢNG!!! 🩸\nTấm kính vỡ ở bước ${step}.\nMất ${bet.toLocaleString()} PP!`, title: "RƠI XUỐNG VỰC", isWin: false }; } return { payout: bet * 20, message: `VƯỢT QUA CẦU KÍNH THÀNH CÔNG!!!\nBạn đã sống sót. Thắng ${(bet*20).toLocaleString()} PP!`, title: "NGƯỜI CHIẾN THẮNG", isWin: true }; });
-window.playBossRaid = () => executeBet("SĂN BOSS VỰC", async (bet) => { let playerHp = bet * 3, bossHp = bet * 5; alert(`🗡️ BẠN MUA VŨ KHÍ GIÁ ${bet.toLocaleString()} PP!\nBước vào Vực sâu đối đầu Ma Vương!`); while (playerHp > 0 && bossHp > 0) { const action = confirm(`🔥 MÁU BOSS: ${bossHp.toLocaleString()}\n🛡️ MÁU BẠN: ${playerHp.toLocaleString()}\n\n[OK] = CHÉM TIẾP!\n[CANCEL] = BỎ CHẠY (Giữ lại nửa tiền)`); if (!action) return { payout: -Math.floor(bet/2), message: `Bạn đã hèn nhát bỏ chạy.\nBảo toàn mạng sống, mất ${(Math.floor(bet/2)).toLocaleString()} PP.`, title: "BỎ CHẠY", isWin: false }; const pDmg = Math.floor(bet * (Math.random() + 0.4)), bDmg = Math.floor(bet * (Math.random() + 0.7)); bossHp -= pDmg; if(bossHp <= 0) break; playerHp -= bDmg; alert(`💥 Bạn chém Boss mất ${pDmg.toLocaleString()} HP!\n🩸 Boss tát lại bạn mất ${bDmg.toLocaleString()} HP!`); } if (playerHp <= 0) return { payout: -bet, message: `WAASTED... BẠN ĐÃ TỬ TRẬN!\nMa Vương quá mạnh. Mất ${bet.toLocaleString()} PP.`, title: "TỬ TRẬN", isWin: false }; return { payout: bet * 3, message: `BOSS ĐÃ BỊ TIÊU DIỆT!!! 🏆\nRớt rương báu, nhận ${(bet*3).toLocaleString()} PP!`, title: "DIỆT MA VƯƠNG", isWin: true }; });
-window.playMinesweeper = () => executeBet("MÁY DÒ MÌN", async (bet) => { let guess = prompt(`Nhập 3 ô số (từ 1 đến 10) AN TOÀN.\nVí dụ nhập: 2, 5, 9`); if(!guess) return null; let pCells = guess.split(',').map(s => parseInt(s.trim())); if(pCells.length !== 3 || pCells.some(n => isNaN(n) || n<1 || n>10)) { alert("Lỗi định dạng!"); return null; } let mines = []; while(mines.length < 4) { let m = Math.floor(Math.random()*10)+1; if(!mines.includes(m)) mines.push(m); } let hitMines = pCells.filter(c => mines.includes(c)); if (hitMines.length > 0) return { payout: -bet, message: `BÙMMM!!! 💥\nBãi mìn ở ô: [ ${mines.join(', ')} ]\nBạn đạp trúng ô ${hitMines[0]}! Mất ${bet.toLocaleString()} PP!`, title: "ĐẠP MÌN", isWin: false }; return { payout: bet * 5, message: `AN TOÀN!!!\nBãi mìn ở ô: [ ${mines.join(', ')} ]\nCả 3 ô của bạn đều trống. Nhận ${(bet*5).toLocaleString()} PP!`, title: "CHUYÊN GIA", isWin: true }; });
-window.playAuction = () => executeBet("ĐẤU GIÁ RƯƠNG", async (bet) => { const realValue = Math.floor(Math.random() * 99000) + 1000; const botThreshold = Math.floor(realValue * (Math.random() * 0.9 + 0.4)); let bid = prompt(`Hệ thống đang sở hữu 1 RƯƠNG BÍ ẨN.\nCó thể chứa từ 1k đến 100k PP.\n\nBạn muốn đấu giá mua rương này bao nhiêu PP?`); if(!bid) return null; bid = parseInt(bid); if(isNaN(bid) || bid <= 0) return null; if (bid < botThreshold) return { payout: 0, message: `Mức giá của bạn là ${bid.toLocaleString()} PP.\nHệ Thống chê rẻ không bán!\n(Tiết lộ: Rương chứa ${realValue.toLocaleString()} PP).`, title: "KHÔNG KHỚP LỆNH", isWin: true }; const netProfit = realValue - bid; if (netProfit >= 0) return { payout: netProfit, message: `BÚA GÕ! ĐÃ BÁN! 🔨\nBạn mua giá ${bid.toLocaleString()} PP.\nMở ra: ${realValue.toLocaleString()} PP!\nBạn LỜI ${netProfit.toLocaleString()} PP!`, title: "ĐỒ CỔ THẬT", isWin: true }; return { payout: netProfit, message: `BÚA GÕ! ĐÃ BÁN! 🔨\nBạn mua giá ${bid.toLocaleString()} PP.\nMở ra: ${realValue.toLocaleString()} PP!\nBạn BỊ HỚ mất ${(netProfit * -1).toLocaleString()} PP!`, title: "BỊ LỪA", isWin: false }; });
+window.playClawMachine = () => executeBet("GẮP GẤU BÔNG", async (bet) => { const r = Math.random(); if(r < 0.05) return { payout: bet * 10, message: `Trời ơi!!! Bạn gắp được 🦄 KỲ LÂN NGÂN HÀ!\nThắng ${(bet*10).toLocaleString()} PP!`, title: "BÀN TAY VÀNG", isWin: true }; if(r < 0.35) return { payout: bet * 2, message: `Tuyệt vời! Gắp được 🐻 Gấu Teddy!\nThắng ${(bet*2).toLocaleString()} PP!`, title: "GẮP THÀNH CÔNG", isWin: true }; return { payout: -bet, message: `Tuột càng mất rồi!\nBạn mất ${bet.toLocaleString()} PP!`, title: "TUỘT CÀNG", isWin: false }; });
+window.playTarot = () => executeBet("BÓI TAROT", async (bet) => { let choice = prompt("Có 3 lá bài đang úp (1, 2, 3).\nBạn chọn lật lá bài số mấy?"); if(!['1','2','3'].includes(choice)) return null; const cards = [ { name: "THE SUN ☀️", mult: 5, msg: "Tài lộc dồi dào!" }, { name: "THE LOVERS 💕", mult: 2, msg: "May mắn nhân đôi!" }, { name: "THE TOWER 🌩️", mult: 0, msg: "Tiền tài tiêu tán!" }, { name: "DEATH 💀", mult: 0, msg: "Mất sạch tiền cược!" }, { name: "WHEEL OF FORTUNE 🎡", mult: 1.5, msg: "Sinh lời vừa phải." } ]; const drawn = cards[Math.floor(Math.random() * cards.length)]; const profit = Math.floor(bet * drawn.mult) - bet; if (profit >= 0) return { payout: profit, message: `Lật trúng lá ${drawn.name}\nNhận được ${(profit + bet).toLocaleString()} PP!`, title: "THÔNG ĐIỆP", isWin: true }; return { payout: profit, message: `Lật trúng lá ${drawn.name}\nMất ${bet.toLocaleString()} PP!`, title: "VẬN ĐEN", isWin: false }; });
+window.playSquidGame = () => executeBet("CẦU KÍNH SQUID GAME", async (bet) => { let step = 1; while(step <= 5) { let choice = prompt(`🌉 BƯỚC ${step}/5:\nChọn T (Trái) hoặc P (Phải):`); if(!choice) return { payout: -bet, message: `Bỏ cuộc giữa chừng. Mất ${bet.toLocaleString()} PP!`, title: "CHẾT NHÁT", isWin: false }; choice = choice.toUpperCase(); if(choice !== 'T' && choice !== 'P') { alert("Nhập T hoặc P."); continue; } if (Math.random() < 0.40) { alert(`Bước ${step} AN TOÀN!`); step++; } else return { payout: -bet, message: `RẮC... XOẢNG!!! 🩸\nRơi vực ở bước ${step}. Mất ${bet.toLocaleString()} PP!`, title: "RƠI VỰC", isWin: false }; } return { payout: bet * 20, message: `VƯỢT QUA THÀNH CÔNG!!!\nThắng ${(bet*20).toLocaleString()} PP!`, title: "SỐNG SÓT", isWin: true }; });
+window.playBossRaid = () => executeBet("SĂN BOSS VỰC", async (bet) => { let playerHp = bet * 3, bossHp = bet * 5; alert(`🗡️ Bạn mua vũ khí giá ${bet.toLocaleString()} PP!`); while (playerHp > 0 && bossHp > 0) { const action = confirm(`🔥 MÁU BOSS: ${bossHp}\n🛡️ MÁU BẠN: ${playerHp}\n\n[OK] = CHÉM\n[CANCEL] = CHẠY (Giữ nửa tiền)`); if (!action) return { payout: -Math.floor(bet/2), message: `Bỏ chạy. Mất ${(Math.floor(bet/2)).toLocaleString()} PP.`, title: "BỎ CHẠY", isWin: false }; const pDmg = Math.floor(bet * (Math.random() + 0.4)), bDmg = Math.floor(bet * (Math.random() + 0.7)); bossHp -= pDmg; if(bossHp <= 0) break; playerHp -= bDmg; alert(`💥 Chém Boss: ${pDmg}\n🩸 Boss tát: ${bDmg}`); } if (playerHp <= 0) return { payout: -bet, message: `WAASTED... BẠN ĐÃ TỬ TRẬN!\nMất ${bet.toLocaleString()} PP.`, title: "TỬ TRẬN", isWin: false }; return { payout: bet * 3, message: `BOSS ĐÃ BỊ TIÊU DIỆT!!! 🏆\nNhận ${(bet*3).toLocaleString()} PP!`, title: "DIỆT MA VƯƠNG", isWin: true }; });
+window.playMinesweeper = () => executeBet("MÁY DÒ MÌN", async (bet) => { let guess = prompt(`Nhập 3 ô (từ 1-10) AN TOÀN. VD: 2, 5, 9`); if(!guess) return null; let pCells = guess.split(',').map(s => parseInt(s.trim())); if(pCells.length !== 3 || pCells.some(n => isNaN(n) || n<1 || n>10)) { alert("Lỗi!"); return null; } let mines = []; while(mines.length < 4) { let m = Math.floor(Math.random()*10)+1; if(!mines.includes(m)) mines.push(m); } let hitMines = pCells.filter(c => mines.includes(c)); if (hitMines.length > 0) return { payout: -bet, message: `BÙMMM!!! 💥\nMìn: [ ${mines.join(', ')} ]\nBạn đạp trúng ô ${hitMines[0]}! Mất ${bet.toLocaleString()} PP!`, title: "ĐẠP MÌN", isWin: false }; return { payout: bet * 5, message: `AN TOÀN!!!\nMìn: [ ${mines.join(', ')} ]\nNhận ${(bet*5).toLocaleString()} PP!`, title: "CHUYÊN GIA", isWin: true }; });
+window.playAuction = () => executeBet("ĐẤU GIÁ RƯƠNG", async (bet) => { const realValue = Math.floor(Math.random() * 99000) + 1000; const botThreshold = Math.floor(realValue * (Math.random() * 0.9 + 0.4)); let bid = prompt(`Nhập giá PP muốn mua (Rương 1k-100k):`); if(!bid) return null; bid = parseInt(bid); if(isNaN(bid) || bid <= 0) return null; if (bid < botThreshold) return { payout: 0, message: `Giá ${bid.toLocaleString()} quá rẻ. Hệ thống không bán!\n(Rương chứa ${realValue.toLocaleString()} PP).`, title: "KHÔNG KHỚP LỆNH", isWin: true }; const netProfit = realValue - bid; if (netProfit >= 0) return { payout: netProfit, message: `Mua giá ${bid.toLocaleString()} PP.\nMở ra: ${realValue.toLocaleString()} PP!\nLỜI ${netProfit.toLocaleString()} PP!`, title: "ĐỒ CỔ THẬT", isWin: true }; return { payout: netProfit, message: `Mua giá ${bid.toLocaleString()} PP.\nMở ra: ${realValue.toLocaleString()} PP!\nBỊ HỚ mất ${(netProfit * -1).toLocaleString()} PP!`, title: "BỊ LỪA", isWin: false }; });
 window.playSlot = () => executeBet("SLOT", (b) => { const s=['🍒','🍋','🔔','💎','🍉','💀','💩','🎱']; const r1=s[Math.floor(Math.random()*8)], r2=s[Math.floor(Math.random()*8)], r3=s[Math.floor(Math.random()*8)], res=`[ ${r1} | ${r2} | ${r3} ]`; if(r1===r2&&r2===r3) return {payout:b*10, message:`${res}\nNỔ HŨ X10! Trúng ${(b*10).toLocaleString()} PP!`, title:"JACKPOT", isWin:true}; if(r1===r2||r2===r3||r1===r3) return {payout:b, message:`${res}\nTRÚNG CẶP! X2 Tài sản!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`${res}\nTRẬT LẤT! Mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playCocktail = () => executeBet("COCKTAIL ĐỘC", (b) => { const p = Math.floor(Math.random()*6); if(p===0 || p===1) return {payout:-b, message:`LY CÓ ĐỘC! (Tỉ lệ chết 33%)\nMất sạch ${b.toLocaleString()} PP!`, title:"TỬ VONG", isWin:false}; return {payout:Math.floor(b*0.2), message:`An toàn! Lời ${(Math.floor(b*0.2)).toLocaleString()} PP!`, title:"NGON MIỆNG", isWin:true}; });
 window.playDarts = () => executeBet("PHI TIÊU", (b) => { const s = Math.floor(Math.random()*100)+1; if(s>96) return {payout:b*4, message:`Hồng tâm (${s}đ)! Trúng ${(b*4).toLocaleString()} PP!`, title:"XUẤT THẦN", isWin:true}; if(s>60) return {payout:b, message:`Trúng bảng (${s}đ)! X2 tiền!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Phóng trượt (${s}đ)! Mất ${b.toLocaleString()} PP!`, title:"TRƯỢT", isWin:false}; });
@@ -484,13 +531,281 @@ window.playChest = (c) => executeBet("RƯƠNG TỬ THẦN", (b) => { const bm=Ma
 window.playLottery = () => executeBet("XỔ SỐ", (b) => { const n=parseInt(prompt("Vé (00-99):")); if(isNaN(n))return null; const s=Math.floor(Math.random()*110); return n===s ? {payout:b*70, message:`Kết quả: ${s}!\nTRÚNG ${(b*70).toLocaleString()} PP!`, title:"ĐỘC ĐẮC", isWin:true} : {payout:-b, message:`Kết quả: ${s}. Trật lất! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playKeno = () => executeBet("KENO", (b) => { let g=parseInt(prompt("Bi (1-20):")); if(isNaN(g)||g<1||g>20) return null; const s=Math.floor(Math.random()*22)+1; if(g===s) return {payout:b*10, message:`Bi rớt vào ${s}! Thắng ${(b*10).toLocaleString()} PP!`, title:"TIÊN TRI", isWin:true}; return {payout:-b, message:`Bi rớt vào ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playMine = () => executeBet("ĐÀO ĐÁ QUÝ", (b) => { if(Math.random()<0.40) return {payout:-b, message:`Cuốc trúng Bom! Mất ${b.toLocaleString()} PP!`, title:"NỔ BANH XÁC", isWin:false}; return {payout:Math.floor(b*0.2), message:`Đào được Thạch Anh. Lời ${(Math.floor(b*0.2)).toLocaleString()} PP!`, title:"THỢ MỎ", isWin:true}; });
-window.rpsGame = (c) => executeBet("KÉO BÚA BAO", (b) => { if(Math.random()<0.25) return {payout:-b, message:`Máy nhìn trộm và ra đòn khắc chế! Bạn thua ${b.toLocaleString()} PP!`, title:"BỊP BỢM", isWin:false}; const s=['KEO','BUA','BAO'][Math.floor(Math.random()*3)]; if(c===s) return {payout:0, message:`Máy ra ${s}. HÒA!`, title:"HÒA", isWin:true}; if((c==='KEO'&&s==='BAO')||(c==='BUA'&&s==='KEO')||(c==='BAO'&&s==='BUA')) return {payout:b, message:`Máy ra ${s}. Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Máy ra ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
+window.rpsGame = (c) => executeBet("KÉO BÚA BAO", (b) => { if(Math.random()<0.25) return {payout:-b, message:`Máy nhìn trộm đòn! Thua ${b.toLocaleString()} PP!`, title:"BỊP BỢM", isWin:false}; const s=['KEO','BUA','BAO'][Math.floor(Math.random()*3)]; if(c===s) return {payout:0, message:`Máy ra ${s}. HÒA!`, title:"HÒA", isWin:true}; if((c==='KEO'&&s==='BAO')||(c==='BUA'&&s==='KEO')||(c==='BAO'&&s==='BUA')) return {payout:b, message:`Máy ra ${s}. Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Máy ra ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playZodiac = () => executeBet("HOÀNG ĐẠO", (b) => { const s=Math.floor(Math.random()*14)+1; let g=parseInt(prompt("Cung (1-12):")); if(isNaN(g)||g<1||g>12) return null; if(g===s) return {payout:b*9, message:`Kim vào cung ${s}! Thắng ${(b*9).toLocaleString()} PP!`, title:"CHIÊM TINH", isWin:true}; return {payout:-b, message:`Kim vào cung ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playCockfight = (c) => executeBet("ĐÁ GÀ", (b) => { const w = Math.random()>0.6? (c==='RED'?'BLUE':'RED') : c; if(c===w) return {payout:b, message:`Gà của bạn tung cú đá hiểm hóc thắng!\nĂn ${b.toLocaleString()} PP!`, title:"THẮNG LỚN", isWin:true}; return {payout:-b, message:`Gà của bạn gãy giò bị hạ gục. Mất ${b.toLocaleString()} PP!`, title:"THUA SẠCH", isWin:false}; });
-window.playThreeCards = () => executeBet("BÀI CÀO 3 LÁ", (b) => { const pScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10, dScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10; if(pScore>dScore && Math.random()>0.1) return {payout:b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThắng ${b.toLocaleString()} PP!`, title:"THẮNG ĐẬM", isWin:true}; if(pScore===dScore) return {payout:-Math.floor(b*0.2), message:`Hòa bài, cái cắn tiền xâu 20%.`, title:"HÒA LỖ", isWin:false}; return {payout:-b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThua ${b.toLocaleString()} PP!`, title:"THUA BÀI", isWin:false}; });
-window.playCupid = () => executeBet("MŨI TÊN TÌNH YÊU", (b) => { const m=(Math.random()*3).toFixed(1), df=Math.floor(b*m)-b; if(df>0) return {payout:df, message:`Mũi tên găm vào hệ số x${m}!\nLời ${df.toLocaleString()} PP.`, title:"TRÚNG TIẾNG SÉT", isWin:true}; if(df===0) return {payout:0, message:`Trúng x1.0! Hòa vốn.`, title:"HÒA", isWin:true}; return {payout:df, message:`Mũi tên găm vào x${m}!\nLỗ ${(df*-1).toLocaleString()} PP.`, title:"LỆCH NHỊP", isWin:false}; });
-window.playShield = () => executeBet("ĐỠ ĐẠN", (b) => { if(Math.random()<0.4) return {payout:Math.floor(b*0.3), message:`Giương khiên thành công!\nLời ${(Math.floor(b*0.3)).toLocaleString()} PP!`, title:"AN TOÀN", isWin:true}; return {payout:-b, message:`Khiên vỡ! Trúng đạn.\nMất sạch ${b.toLocaleString()} PP!`, title:"THƯƠNG VONG", isWin:false}; });
-window.playPirate = (c) => executeBet("KHO BÁU", (b) => { const w=Math.floor(Math.random()*4)+1; if(c===w) return {payout:b*2, message:`Đảo chứa kho báu khổng lồ!\nThắng ${(b*2).toLocaleString()} PP!`, title:"TÌM THẤY VÀNG", isWin:true}; return {payout:-b, message:`Bạn gặp cướp biển!\nMất ${b.toLocaleString()} PP!`, title:"BỊ CƯỚP", isWin:false}; });
+window.playCockfight = (c) => executeBet("ĐÁ GÀ", (b) => { const w = Math.random()>0.6? (c==='RED'?'BLUE':'RED') : c; if(c===w) return {payout:b, message:`Gà tung đòn hiểm thắng!\nĂn ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Gà gãy giò. Mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
+window.playThreeCards = () => executeBet("BÀI CÀO", (b) => { const pScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10, dScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10; if(pScore>dScore && Math.random()>0.1) return {payout:b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; if(pScore===dScore) return {payout:-Math.floor(b*0.2), message:`Hòa, cái thu phế 20%.`, title:"HÒA LỖ", isWin:false}; return {payout:-b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
+window.playCupid = () => executeBet("MŨI TÊN TÌNH YÊU", (b) => { const m=(Math.random()*3).toFixed(1), df=Math.floor(b*m)-b; if(df>0) return {payout:df, message:`Trúng hệ số x${m}!\nLời ${df.toLocaleString()} PP.`, title:"TRÚNG", isWin:true}; if(df===0) return {payout:0, message:`Trúng x1.0! Hòa vốn.`, title:"HÒA", isWin:true}; return {payout:df, message:`Trúng x${m}!\nLỗ ${(df*-1).toLocaleString()} PP.`, title:"LỖ", isWin:false}; });
+window.playShield = () => executeBet("ĐỠ ĐẠN", (b) => { if(Math.random()<0.4) return {payout:Math.floor(b*0.3), message:`Giương khiên thành công!\nLời ${(Math.floor(b*0.3)).toLocaleString()} PP!`, title:"AN TOÀN", isWin:true}; return {payout:-b, message:`Khiên vỡ! Trúng đạn.\nMất ${b.toLocaleString()} PP!`, title:"CHẾT", isWin:false}; });
+window.playPirate = (c) => executeBet("KHO BÁU", (b) => { const w=Math.floor(Math.random()*4)+1; if(c===w) return {payout:b*2, message:`Đảo chứa kho báu!\nThắng ${(b*2).toLocaleString()} PP!`, title:"VÀNG", isWin:true}; return {payout:-b, message:`Gặp cướp biển!\nMất ${b.toLocaleString()} PP!`, title:"BỊ CƯỚP", isWin:false}; });
 window.playEgg = () => executeBet("ĐẬP TRỨNG", (b) => { if(Math.random()<0.7) return {payout:Math.floor(b*0.1), message:`Trứng nở ra vàng!\nLời ${(Math.floor(b*0.1)).toLocaleString()} PP.`, title:"THU HOẠCH", isWin:true}; return {payout:-b, message:`Trứng ung! Thối hoắc.\nMất ${b.toLocaleString()} PP!`, title:"THÚI QUẮC", isWin:false}; });
 window.playExactDice = () => executeBet("ĐOÁN XÚC XẮC", (b) => { let c=parseInt(prompt("Mặt (1-6):")); if(isNaN(c)||c<1||c>6) return null; const r=Math.floor(Math.random()*7)+1; if(c===r) return {payout:b*5, message:`Đổ ra mặt ${r}!\nĂn trọn ${(b*5).toLocaleString()} PP!`, title:"THẦN BÀI", isWin:true}; return {payout:-b, message:`Đổ ra mặt ${r}!\nTrượt rồi, mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playDragonTiger = (c) => executeBet("RỒNG HỔ", (b) => { const d=Math.floor(Math.random()*13)+1, t=Math.floor(Math.random()*13)+1; if(d===t) return {payout:-Math.floor(b*0.5), message:`Rồng ${d} - Hổ ${t}\nHòa nhau, nhà cái thu nửa tiền!`, title:"HÒA LỖ", isWin:false}; const w=d>t?'DRAGON':'TIGER'; if(c===w) return {payout:b, message:`Rồng ${d} - Hổ ${t}\nĐoán chuẩn! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Rồng ${d} - Hổ ${t}\nĐoán sai! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
+
+// ==========================================
+// 🃏 TIẾN LÊN MIỀN NAM VIP (FULL LOGIC + ĐỒNG HỒ 30S)
+// ==========================================
+let myTlRoomId = null; let tlTimerInterval = null; let tlCurrentTurnStartTime = 0; let windowLastHandSig = "";
+const SUITS = ['♠', '♣', '♦', '♥'];
+const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+let selectedCardsIndices = [];
+
+window.openTienLenModal = () => { document.getElementById('tienlen-modal').style.display = 'flex'; listenTienLenRooms(); };
+window.closeTienLenModal = () => { document.getElementById('tienlen-modal').style.display = 'none'; if(tlTimerInterval) clearInterval(tlTimerInterval); };
+
+function listenTienLenRooms() {
+    onValue(ref(db, 'tienlen_rooms'), snap => {
+        const rooms = snap.val() || {}; let lobbyHtml = ""; let amIInRoom = false;
+        
+        for(let k in rooms) {
+            const r = rooms[k]; const players = r.players || {}; const isMeHere = Object.keys(players).includes(uid);
+            if(isMeHere) { amIInRoom = true; myTlRoomId = k; renderTlBoard(r); manageTlTimer(r); }
+            if(r.status === 'WAITING' && !isMeHere) {
+                lobbyHtml += `<div class="room-item">
+                    <div><strong class="text-gold">PHÒNG BÀI CỦA ${r.creatorName}</strong><br><small>Tiền cược: ${r.bet.toLocaleString()} PP / Ván | Sĩ số: ${Object.keys(players).length}/4</small></div>
+                    ${Object.keys(players).length < 4 ? `<button onclick="tlJoinRoom('${k}')" class="btn-cyber" style="padding: 10px 25px;">[ NGỒI VÀO BÀN ]</button>` : '<span class="text-red">ĐÃ ĐẦY CHỖ</span>'}
+                </div>`;
+            }
+        }
+        
+        document.getElementById('tl-room-list').innerHTML = lobbyHtml || '<p style="color:#888; grid-column: span 2; text-align:center;">Chưa có đại gia nào mở sòng.</p>';
+        if(amIInRoom) { document.getElementById('tl-lobby').style.display = 'none'; document.getElementById('tl-board').style.display = 'block'; } 
+        else { document.getElementById('tl-lobby').style.display = 'block'; document.getElementById('tl-board').style.display = 'none'; myTlRoomId = null; if(tlTimerInterval) clearInterval(tlTimerInterval); }
+    });
+}
+
+window.tlCreateRoom = async () => {
+    let bet = parseInt(prompt("Nhập PP cược TỐI THIỂU cho 1 ván:")); if(isNaN(bet) || bet <= 0) return;
+    const s = await get(ref(db, `users/${uid}`)); const u = s.val(); if((Number(u.pp)||0) < bet) return alert("Không đủ PP!");
+    await update(ref(db, `users/${uid}`), { pp: (Number(u.pp)||0) - bet });
+    const roomId = 'TL_' + Date.now();
+    await set(ref(db, `tienlen_rooms/${roomId}`), { creator: uid, creatorName: u.name, bet: bet, status: 'WAITING', players: { [uid]: { name: u.name, avatar: u.avatar || 'https://i.pravatar.cc/150', isCreator: true } }, playerOrder: [uid], pot: bet });
+};
+window.tlJoinRoom = async (roomId) => {
+    const s = await get(ref(db, `tienlen_rooms/${roomId}`)); const r = s.val(); if(!r || r.status !== 'WAITING') return alert("Bàn đang chơi hoặc không tồn tại!");
+    if(Object.keys(r.players).length >= 4) return alert("Bàn đã đủ 4 tụ!");
+    const uS = await get(ref(db, `users/${uid}`)); const u = uS.val(); if((Number(u.pp)||0) < r.bet) return alert("Bạn không đủ lúa vô sòng!");
+    await update(ref(db, `users/${uid}`), { pp: (Number(u.pp)||0) - r.bet });
+    const newOrder = [...(r.playerOrder || []), uid];
+    await update(ref(db, `tienlen_rooms/${roomId}/players/${uid}`), { name: u.name, avatar: u.avatar || 'https://i.pravatar.cc/150' });
+    await update(ref(db, `tienlen_rooms/${roomId}`), { playerOrder: newOrder, pot: r.pot + r.bet });
+};
+window.tlLeaveGame = async () => {
+    if(!myTlRoomId) return window.closeTienLenModal();
+    const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
+    if(r.status === 'PLAYING') return alert("Đang trong ván. Chạy ngang mất sạch cược đó!");
+    if(r.status === 'WAITING') {
+        const uS = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(uS.val().pp)||0) + r.bet });
+        await remove(ref(db, `tienlen_rooms/${myTlRoomId}/players/${uid}`));
+        const newOrder = r.playerOrder.filter(id => id !== uid);
+        if(newOrder.length === 0) await remove(ref(db, `tienlen_rooms/${myTlRoomId}`));
+        else await update(ref(db, `tienlen_rooms/${myTlRoomId}`), { playerOrder: newOrder, pot: r.pot - r.bet });
+    }
+};
+
+window.tlStartGame = async () => {
+    if(!myTlRoomId) return; const s = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = s.val();
+    if(Object.keys(r.players).length < 2) return alert("Phải đủ tay (Min 2 người) mới chia bài được!");
+    let deck = Array.from({length: 52}, (_, i) => i);
+    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    let hands = {}; let i = 0;
+    r.playerOrder.forEach(pUid => { hands[pUid] = deck.slice(i, i + 13).sort((a,b) => a - b); i += 13; });
+    const firstTurn = r.playerOrder[Math.floor(Math.random() * r.playerOrder.length)];
+    await update(ref(db, `tienlen_rooms/${myTlRoomId}`), { status: 'PLAYING', hands: hands, turn: firstTurn, turnStartTime: Date.now(), currentPile: [], passList: [], lastPlayedBy: '' });
+};
+
+// --- VALIDATOR LUẬT TIẾN LÊN CHUẨN ---
+function analyzeCards(cards) {
+    if(!cards || cards.length === 0) return null;
+    cards.sort((a,b) => a - b);
+    const ranks = cards.map(c => Math.floor(c/4));
+    const isSameRank = ranks.every(r => r === ranks[0]);
+    if(cards.length === 1) return { type: 'single', highCard: cards[0], count: 1 };
+    if(isSameRank && cards.length === 2) return { type: 'pair', highCard: cards[1], count: 2 };
+    if(isSameRank && cards.length === 3) return { type: 'triple', highCard: cards[2], count: 3 };
+    if(isSameRank && cards.length === 4) return { type: 'quad', highCard: cards[3], count: 4 };
+
+    // Sảnh (Straight)
+    let isStraight = true; for(let i = 1; i < ranks.length; i++) { if(ranks[i] !== ranks[i-1] + 1) isStraight = false; }
+    if(isStraight && cards.length >= 3 && ranks[ranks.length-1] < 12) {
+        return { type: 'straight', highCard: cards[cards.length-1], count: cards.length };
+    }
+    // Đôi Thông
+    if(cards.length >= 6 && cards.length % 2 === 0) {
+        let isDoiThong = true; let pairRanks = [];
+        for(let i=0; i<cards.length; i+=2) { if(Math.floor(cards[i]/4) !== Math.floor(cards[i+1]/4)) isDoiThong = false; pairRanks.push(Math.floor(cards[i]/4)); }
+        if(isDoiThong) {
+            for(let i=1; i<pairRanks.length; i++) { if(pairRanks[i] !== pairRanks[i-1] + 1) isDoiThong = false; }
+            if(isDoiThong && pairRanks[pairRanks.length-1] < 12) return { type: 'doithong', pairs: cards.length/2, highCard: cards[cards.length-1], count: cards.length };
+        }
+    }
+    return null;
+}
+
+function canBeat(playObj, pileObj) {
+    if(!pileObj) return true; // Đánh tự do nếu cọc rỗng
+    const pileRank = Math.floor(pileObj.highCard/4);
+    // Luật chặt heo
+    if(pileObj.type === 'single' && pileRank === 12) {
+        if(playObj.type === 'doithong' && playObj.pairs === 3) return true;
+        if(playObj.type === 'quad') return true;
+        if(playObj.type === 'doithong' && playObj.pairs === 4) return true;
+    }
+    if(pileObj.type === 'pair' && pileRank === 12) {
+        if(playObj.type === 'quad') return true;
+        if(playObj.type === 'doithong' && playObj.pairs === 4) return true;
+    }
+    if(pileObj.type === 'doithong' && pileObj.pairs === 3) { if(playObj.type === 'quad' || (playObj.type === 'doithong' && playObj.pairs === 4)) return true; }
+    if(pileObj.type === 'quad' && playObj.type === 'doithong' && playObj.pairs === 4) return true;
+
+    // Đánh thường
+    if(playObj.type === pileObj.type && playObj.count === pileObj.count) { return playObj.highCard > pileObj.highCard; }
+    return false;
+}
+
+function getCardHTML(val, isAnimated = false, index = -1) {
+    const rank = RANKS[Math.floor(val / 4)]; const suit = SUITS[val % 4]; const isRed = (val % 4 === 2 || val % 4 === 3);
+    const idAttr = index >= 0 ? `id="my-card-${index}" onclick="tlToggleCard(${index})"` : '';
+    const styleAttr = isAnimated ? `style="--rot: ${(Math.random()*20 - 10)}deg; left: ${Math.random()*60 - 30}px; position:absolute;"` : '';
+    return `<div ${idAttr} class="tl-card ${isRed ? 'red-suit' : 'black-suit'} ${isAnimated ? 'tl-played-card' : ''}" ${styleAttr}>
+        <div class="rank">${rank}</div><div class="suit">${suit}</div>
+    </div>`;
+}
+
+window.tlToggleCard = (index) => {
+    const el = document.getElementById(`my-card-${index}`);
+    if(selectedCardsIndices.includes(index)) { selectedCardsIndices = selectedCardsIndices.filter(i => i !== index); el.classList.remove('selected'); } 
+    else { selectedCardsIndices.push(index); el.classList.add('selected'); }
+};
+
+function renderTlBoard(r) {
+    const pOrder = r.playerOrder || []; const myIndex = pOrder.indexOf(uid); if(myIndex === -1) return;
+    ['top', 'left', 'right'].forEach(pos => document.getElementById(`tl-seat-${pos}`).innerHTML = '');
+    document.getElementById('tl-start-btn').style.display = (r.status === 'WAITING' && r.creator === uid) ? 'block' : 'none';
+    document.getElementById('tl-pot-display').innerText = `TỔNG CƯỢC: ${r.pot.toLocaleString()} PP`;
+    
+    const isMyTurn = (r.status === 'PLAYING' && r.turn === uid);
+    document.getElementById('tl-controls').style.display = isMyTurn ? 'flex' : 'none';
+    document.getElementById('tl-timer-bar-container').style.display = (r.status === 'PLAYING') ? 'block' : 'none';
+
+    const positions = pOrder.length === 2 ? ['bottom', 'top'] : pOrder.length === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
+    pOrder.forEach((pUid, idx) => {
+        const relativeIdx = (idx - myIndex + pOrder.length) % pOrder.length; const pos = positions[relativeIdx];
+        const pInfo = r.players[pUid]; const isTurn = r.turn === pUid; const hasPassed = (r.passList || []).includes(pUid);
+        const cardCount = r.hands && r.hands[pUid] ? r.hands[pUid].length : 13;
+        
+        let html = `<div class="tl-player-badge ${isTurn ? 'active-turn' : ''} ${hasPassed ? 'passed' : ''}">
+            <img src="${pInfo.avatar}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${isTurn ? 'var(--neon-gold)' : '#fff'};">
+            <div><span class="text-blue" style="font-size:14px; font-weight:bold;">${pInfo.name}</span><br><small style="color:#ffcc00; font-size:12px;">${cardCount} lá</small></div>
+        </div>`;
+        
+        if (pos !== 'bottom' && r.status === 'PLAYING') {
+            html += `<div style="margin-top:15px; display:flex; justify-content:center;">${Array(cardCount).fill('<div class="tl-card-back"></div>').join('')}</div>`;
+            document.getElementById(`tl-seat-${pos}`).innerHTML = html;
+        } else if (pos === 'bottom') {
+            document.getElementById('tl-my-info').innerHTML = html;
+            if(r.status === 'PLAYING' && r.hands && r.hands[uid]) {
+                const myHand = r.hands[uid]; const sig = myHand.join(',');
+                if(windowLastHandSig !== sig) {
+                    selectedCardsIndices = []; document.getElementById('tl-my-hand').innerHTML = myHand.map((val, i) => getCardHTML(val, false, i)).join(''); windowLastHandSig = sig;
+                }
+            } else { document.getElementById('tl-my-hand').innerHTML = ''; windowLastHandSig = ""; }
+        }
+    });
+
+    if(r.status === 'PLAYING') {
+        const centerPileHTML = (r.currentPile || []).map(val => getCardHTML(val, true)).join('');
+        const pileContainer = document.getElementById('tl-center-pile');
+        if(pileContainer.innerHTML !== centerPileHTML) pileContainer.innerHTML = centerPileHTML;
+        
+        if(isMyTurn) {
+            const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
+            document.getElementById('tl-turn-msg').innerHTML = `<span style="color:var(--neon-green)">TỚI LƯỢT ĐÁNH BÀI!</span> ${mustPlay ? '<br><span style="font-size:12px; color:#ffcc00">(Đang cầm cái - Phải đánh!)</span>' : ''}`;
+        } else {
+            document.getElementById('tl-turn-msg').innerText = `Đang đợi ${r.players[r.turn].name}...`;
+        }
+    }
+
+    if(r.status === 'ENDED') {
+        document.getElementById('tl-turn-msg').innerHTML = `<h1 class="text-gold glow-pulse" style="font-size:40px; margin:0;">🎉 ${r.players[r.winner].name} TỚI TRƯỚC! 🎉</h1><p style="margin:5px 0;">Húp trọn ${r.pot.toLocaleString()} PP</p>`;
+        document.getElementById('tl-controls').style.display = 'none'; document.getElementById('tl-timer-bar-container').style.display = 'none';
+        if(r.winner === uid && !window.hasClaimedTl) {
+            window.hasClaimedTl = true;
+            setTimeout(async () => {
+                const uS = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(uS.val().pp)||0) + r.pot });
+                window.showResult("BẠN ĐÃ TỚI!", `Bài quá đẹp! Quét sạch sòng ẵm ${r.pot.toLocaleString()} PP!`, true);
+                await remove(ref(db, `tienlen_rooms/${myTlRoomId}`)); window.hasClaimedTl = false; windowLastHandSig = "";
+            }, 3000);
+        }
+    }
+}
+
+function manageTlTimer(r) {
+    if(r.status !== 'PLAYING') { if(tlTimerInterval) clearInterval(tlTimerInterval); return; }
+    if(tlCurrentTurnStartTime !== r.turnStartTime) {
+        tlCurrentTurnStartTime = r.turnStartTime;
+        if(tlTimerInterval) clearInterval(tlTimerInterval);
+        
+        tlTimerInterval = setInterval(() => {
+            const elapsed = (Date.now() - r.turnStartTime) / 1000;
+            const timeLeft = Math.max(0, 30 - elapsed);
+            const pct = (timeLeft / 30) * 100;
+            const bar = document.getElementById('tl-timer-bar');
+            bar.style.width = `${pct}%`;
+            bar.style.background = pct > 50 ? 'var(--neon-green)' : (pct > 20 ? 'var(--neon-gold)' : 'var(--neon-red)');
+            
+            if(timeLeft <= 0 && r.turn === uid) {
+                clearInterval(tlTimerInterval);
+                const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
+                if(mustPlay && r.hands[uid] && r.hands[uid].length > 0) {
+                    selectedCardsIndices = [0]; window.tlPlayCards(true); // Ép đánh lá nhỏ nhất
+                } else {
+                    window.tlPassTurn(true); // Bỏ lượt
+                }
+            }
+        }, 1000);
+    }
+}
+
+window.tlPlayCards = async (isAuto = false) => {
+    if(selectedCardsIndices.length === 0) return alert("Chọn bài đi chứ!");
+    const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
+    let myHand = r.hands[uid]; let cardsToPlay = selectedCardsIndices.map(i => myHand[i]).sort((a,b) => a - b);
+    
+    const playObj = analyzeCards(cardsToPlay);
+    if(!playObj) {
+        if(!isAuto) alert("Bài không hợp lệ (Không đúng sảnh/đôi/tứ quý)! Cấm đánh láo!"); return;
+    }
+    
+    const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
+    if(!mustPlay) {
+        const pileObj = analyzeCards(r.currentPile);
+        if(!canBeat(playObj, pileObj)) {
+            if(!isAuto) alert("Bài này không chặt được bài trên bàn!"); return;
+        }
+    }
+
+    let newHand = myHand.filter((_, i) => !selectedCardsIndices.includes(i));
+    selectedCardsIndices = []; windowLastHandSig = ""; 
+    let nextIdx = (r.playerOrder.indexOf(uid) + 1) % r.playerOrder.length; let nextUid = r.playerOrder[nextIdx];
+    let safeLoop = 0; while((r.passList || []).includes(nextUid) && safeLoop < 4) { nextIdx = (nextIdx + 1) % r.playerOrder.length; nextUid = r.playerOrder[nextIdx]; safeLoop++; }
+
+    let updates = { [`hands/${uid}`]: newHand, currentPile: cardsToPlay, lastPlayedBy: uid, turn: nextUid, turnStartTime: Date.now() };
+    if(newHand.length === 0) { updates.status = 'ENDED'; updates.winner = uid; }
+    await update(ref(db, `tienlen_rooms/${myTlRoomId}`), updates);
+};
+
+window.tlPassTurn = async (isAuto = false) => {
+    const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
+    if(!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid) {
+        if(!isAuto) alert("Đang cầm cái, bắt buộc phải ra bài!"); return;
+    }
+    
+    let passList = r.passList || []; passList.push(uid);
+    let nextIdx = (r.playerOrder.indexOf(uid) + 1) % r.playerOrder.length; let nextUid = r.playerOrder[nextIdx];
+    let safeLoop = 0; while(passList.includes(nextUid) && safeLoop < 4) { nextIdx = (nextIdx + 1) % r.playerOrder.length; nextUid = r.playerOrder[nextIdx]; safeLoop++; }
+
+    let updates = { passList: passList, turn: nextUid, turnStartTime: Date.now() };
+    if(passList.length >= r.playerOrder.length - 1) { updates.passList = []; updates.currentPile = []; }
+    await update(ref(db, `tienlen_rooms/${myTlRoomId}`), updates);
+};
