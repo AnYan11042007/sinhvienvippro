@@ -3,7 +3,7 @@
     --neon-red: #ff003c; --neon-gold: #ffd700; --neon-blue: #00f0ff; --neon-pink: #ff00ff; --neon-green: #00ff80;
     --text-main: #e6edf3; --text-muted: #8b949e;
 }
-body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); color: var(--text-main); overflow: hidden; }
+body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); color: var(--text-main); overflow: hidden; perspective: 1000px; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); }
 ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
@@ -21,10 +21,10 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .brand-glitch { font-family: 'JetBrains Mono', monospace; font-size: 2.8rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-shadow: 3px 3px var(--neon-red), -3px -3px var(--neon-blue); }
 .brand-glitch.small { font-size: 1.6rem; text-align: center; margin-bottom: 25px; }
 
-@keyframes popIn { 0% { opacity: 0; transform: scale(0.5); } 80% { transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes modalDrop { 0% { opacity: 0; transform: scale(0.9) translateY(-20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 100; }
-.login-panel { padding: 40px 50px; width: 400px; text-align: center; border-top: 4px solid var(--neon-red); animation: modalDrop 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes popIn3D { 0% { opacity: 0; transform: rotateX(25deg) translateY(-40px) scale(0.8); } 100% { opacity: 1; transform: rotateX(0deg) translateY(0) scale(1); } }
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; transform-style: preserve-3d; perspective: 1200px; }
+.login-panel { padding: 40px 50px; width: 400px; text-align: center; border-top: 4px solid var(--neon-red); animation: popIn3D 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; max-height: 90vh; overflow-y: auto; box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.05); }
+
 .shield-logo { position: relative; margin-bottom: 15px; }
 .input-row { background: rgba(0,0,0,0.6); border: 1px solid #30363d; border-radius: 8px; margin: 18px 0; display: flex; align-items: center; padding: 14px; transition: 0.3s; }
 .input-row i { color: var(--text-muted); margin-right: 15px; font-size: 1.1rem; }
@@ -49,7 +49,6 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .user-card { display: flex; align-items: center; gap: 15px; padding-bottom: 25px; border-bottom: 1px solid #30363d; margin-bottom: 25px; }
 .avatar-ring { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--neon-gold); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(0,0,0,0.5); box-shadow: 0 0 10px rgba(255,215,0,0.3); cursor: pointer; transition: 0.3s; overflow: hidden;}
 .avatar-ring:hover { border-color: var(--neon-red); box-shadow: 0 0 15px var(--neon-red); transform: scale(1.05); }
-
 .badge { display: inline-block; padding: 4px 12px; border: 1px solid var(--neon-red); border-radius: 20px; font-size: 10px; font-weight: 800; color: var(--neon-red); background: rgba(255,0,60,0.1);}
 .nav-links { list-style: none; padding: 0; }
 .nav-links li { padding: 16px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; transition: 0.3s; color: var(--text-muted); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px;}
@@ -73,7 +72,6 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .cyber-table td { padding: 15px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s;}
 .cyber-table tr:hover td { background: rgba(255,255,255,0.03); }
 
-/* --- TÙY CHỈNH NEON BAR & GAMES --- */
 .glow-pulse { animation: glowPulse 2s infinite; }
 @keyframes glowPulse { 0% { text-shadow: 0 0 10px currentColor; } 50% { text-shadow: 0 0 25px currentColor; } 100% { text-shadow: 0 0 10px currentColor; } }
 
@@ -82,13 +80,48 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .game-card::before { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%); opacity: 0; transition: 0.5s; pointer-events: none; }
 .game-card:hover { transform: translateY(-8px) scale(1.02); z-index: 2; box-shadow: 0 15px 30px rgba(0,0,0,0.8), inset 0 0 20px currentColor; border-color: currentColor; }
 .game-card:hover::before { opacity: 1; transform: rotate(25deg); }
-
 .game-card h4 { font-size: 16px; margin: 0 0 8px 0; letter-spacing: 1px; text-transform: uppercase; font-weight: 900; }
 .game-card p { font-size: 12px; color: #aaa; margin: 0 0 15px 0; line-height: 1.5; height: 36px;}
 .game-card .btn-cyber { padding: 10px; font-size: 12px; background: rgba(0,0,0,0.8); border-width: 2px; }
-
 .pvp-card { background: linear-gradient(135deg, rgba(255,0,60,0.15) 0%, rgba(255,0,255,0.15) 100%); border: 2px solid var(--neon-pink); grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 25px 30px; }
-.pvp-card:hover { box-shadow: 0 0 30px rgba(255,0,255,0.4), inset 0 0 20px rgba(255,0,255,0.2); }
-
 .room-item { background: rgba(0,0,0,0.5); border: 1px solid #444; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
 .room-item:hover { border-color: var(--neon-gold); background: rgba(255,215,0,0.1); }
+
+/* TÀI XỈU 3D */
+.tx-board { position: relative; width: 280px; height: 280px; margin: 20px auto; display: flex; align-items: center; justify-content: center; }
+.tx-plate { position: absolute; width: 240px; height: 240px; background: radial-gradient(circle, #e6e6e6 0%, #999 70%, #444 100%); border-radius: 50%; box-shadow: 0 10px 20px rgba(0,0,0,0.8), inset 0 -5px 15px rgba(0,0,0,0.5); border: 4px solid #ddd; }
+.tx-dice-wrap { position: absolute; display: flex; gap: 8px; z-index: 2; }
+.tx-dice { font-size: 55px; background: #fff; border-radius: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #ff003c; }
+.tx-dice.black { color: #111; }
+.tx-cup { position: absolute; width: 210px; height: 210px; background: radial-gradient(circle at 30% 30%, #ff4d4d 0%, #cc0000 60%, #660000 100%); border-radius: 50%; z-index: 5; box-shadow: 0 15px 25px rgba(0,0,0,0.8), inset 0 -10px 20px rgba(0,0,0,0.5); cursor: grab; border: 2px solid #ff9999; }
+.tx-cup:active { cursor: grabbing; }
+.shake-anim { animation: shakeCup 0.3s ease-in-out infinite; }
+@keyframes shakeCup { 0% { transform: translate(3px, 3px) rotate(0deg); } 25% { transform: translate(-3px, -3px) rotate(-2deg); } 50% { transform: translate(-3px, 3px) rotate(2deg); } 75% { transform: translate(3px, -3px) rotate(-2deg); } 100% { transform: translate(3px, 3px) rotate(0deg); } }
+
+/* MÁY BAY KHÔNG CHIẾN 2.0 */
+.sky-container { position: relative; width: 100%; height: 250px; background: linear-gradient(to bottom, #000411, #0a0a2a); border: 2px solid var(--neon-blue); border-radius: 10px; overflow: hidden; margin-bottom: 20px; box-shadow: inset 0 0 30px rgba(0,240,255,0.2); }
+.flight-hangar { position: absolute; bottom: 0; left: 0; width: 80px; height: 50px; background: #222; border-right: 3px solid #555; border-top: 3px solid #555; border-radius: 0 10px 0 0; z-index: 2; box-shadow: 10px 0 20px rgba(0,0,0,0.8); }
+.flight-runway { position: absolute; bottom: 0; left: 0; width: 200%; height: 10px; background: repeating-linear-gradient(90deg, #fff 0, #fff 20px, #333 20px, #333 40px); z-index: 1; transition: transform 2s linear; }
+.player-plane { position: absolute; left: 10px; bottom: 15px; font-size: 40px; color: var(--neon-blue); z-index: 4; text-shadow: 0 0 15px var(--neon-blue); filter: drop-shadow(0px 10px 5px rgba(0,0,0,0.8)); transition: left 0.1s, bottom 0.1s, transform 0.3s; }
+.player-plane.flying::after { content: ''; position: absolute; right: 85%; top: 55%; width: 25px; height: 8px; background: linear-gradient(to left, #ff9900, #ff0000, transparent); border-radius: 50%; transform: translateY(-50%); animation: thrust 0.1s infinite alternate; }
+@keyframes thrust { 0% { width: 20px; opacity: 0.8; } 100% { width: 35px; opacity: 1; } }
+.enemy-plane { position: absolute; right: -60px; top: 20%; font-size: 45px; color: var(--neon-red); z-index: 3; text-shadow: 0 0 15px var(--neon-red); display: none; transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); filter: drop-shadow(0px 10px 5px rgba(0,0,0,0.8)); transform: scaleX(-1); }
+.laser-beam { position: absolute; height: 4px; background: #fff; box-shadow: 0 0 15px #fff, 0 0 25px var(--neon-red), 0 0 35px var(--neon-red); z-index: 2; display: none; border-radius: 5px; }
+.boom-effect { position: absolute; font-size: 80px; z-index: 5; display: none; filter: drop-shadow(0 0 30px #ff0000); animation: explodeAnim 0.6s ease-out forwards; }
+@keyframes explodeAnim { 0% { transform: scale(0.2); opacity: 1; } 40% { transform: scale(1.8); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
+.multiplier-display { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 80px; font-weight: 900; color: rgba(255,255,255,0.1); z-index: 1; font-family: 'JetBrains Mono', monospace; transition: color 0.3s; }
+
+/* --- CSS BÓNG ĐÁ CHUYÊN NGHIỆP CÓ 12 CẦU THỦ SIÊU MƯỢT --- */
+.football-pitch { position: relative; width: 100%; height: 250px; background: #2e8b57; border: 4px solid #fff; border-radius: 10px; margin-bottom: 20px; overflow: hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
+.football-pitch::before { content:''; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #fff; transform: translateX(-50%); opacity: 0.8;}
+.football-pitch::after { content:''; position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; border: 4px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.8;}
+.goal-left { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 30px; height: 100px; border: 4px solid #fff; border-left: none; }
+.goal-right { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 30px; height: 100px; border: 4px solid #fff; border-right: none; }
+
+/* Hiệu ứng lướt siêu êm (1 giây) */
+.fb-player { position: absolute; font-size: 20px; z-index: 4; transition: left 1s linear, top 1s linear; transform: translate(-50%, -50%); }
+.fb-team-xanh { color: #00f0ff; filter: drop-shadow(0 0 8px #00f0ff); }
+.fb-team-do { color: #ff003c; filter: drop-shadow(0 0 8px #ff003c); } 
+
+/* Bóng bay mượt */
+.soccer-ball { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 16px; color: #fff; z-index: 5; transition: left 0.5s ease-out, top 0.5s ease-out; text-shadow: 0 5px 5px rgba(0,0,0,0.8); }
