@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>S-SYSTEM | VAA GENESIS COMMAND</title>
+    <title>S-SYSTEM | School Main 88-VIP PRO</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -19,7 +19,7 @@
     <div id="login-screen" class="overlay">
         <div class="glass-box login-panel">
             <div class="shield-logo"><i class="fas fa-skull text-red fa-3x glow-pulse"></i></div>
-            <h1 class="brand-glitch" style="margin: 10px 0;">S-SYSTEM</h1>
+            <h1 class="brand-glitch" style="margin: 10px 0;">School Main 88</h1>
             <div class="input-row"><i class="fas fa-terminal"></i><input type="text" id="username" placeholder="UID"></div>
             <div class="input-row"><i class="fas fa-fingerprint"></i><input type="password" id="password" placeholder="Mật mã"></div>
             <button onclick="login()" class="btn-cyber w-100" style="margin-top: 15px;">[ KHỞI ĐỘNG ]</button>
@@ -28,7 +28,7 @@
 
     <div id="dashboard" class="layout-container" style="display: none;">
         <aside class="sidebar glass-box">
-            <div class="brand-glitch small" style="color:var(--neon-red);">S-SYSTEM</div>
+            <div class="brand-glitch small" style="color:var(--neon-red); font-size:1.2rem;">School Main 88</div>
             <div class="user-card">
                 <div class="avatar-ring" id="avatar-container" onclick="changeAvatar()"><i class="fas fa-user-ninja"></i></div>
                 <div class="user-meta">
@@ -68,9 +68,7 @@
                             <div class="card-header" style="border-bottom: 1px solid var(--neon-blue);">
                                 <h3 class="text-blue"><i class="fas fa-crosshairs"></i> NHIỆM VỤ QUIZ KIẾM PP</h3>
                             </div>
-                            <div class="mission-list" id="student-mission-list" style="margin-top:10px;">
-                                <p style="color:#888; text-align:center;">Đang tải dữ liệu Quiz...</p>
-                            </div>
+                            <div class="mission-list" id="student-mission-list" style="margin-top:10px;"></div>
                         </div>
                     </div>
                     <div class="col-side">
@@ -94,22 +92,16 @@
                         <input type="text" id="transfer-msg" placeholder="Lời nhắn đính kèm..." class="cyber-input w-100" style="margin-bottom:20px;">
                         <button onclick="transferPP()" class="btn-cyber w-100" style="border-color:var(--neon-blue); color:var(--neon-blue); padding:15px; font-size:16px;">[ XÁC NHẬN CHUYỂN TIỀN ]</button>
                     </div>
-                    
                     <div class="glass-box section-card">
                         <div class="card-header"><h3><i class="fas fa-history"></i> LỊCH SỬ GIAO DỊCH CỦA TÔI</h3></div>
-                        <div class="table-container" style="max-height: 400px;">
-                            <table class="cyber-table">
-                                <thead><tr><th>Thời gian</th><th>Loại</th><th>Đối tác</th><th>Số lượng</th><th>Lời nhắn</th></tr></thead>
-                                <tbody id="student-transactions"></tbody>
-                            </table>
-                        </div>
+                        <div class="table-container" style="max-height: 400px;"><table class="cyber-table"><thead><tr><th>Thời gian</th><th>Loại</th><th>Đối tác</th><th>Số lượng</th><th>Lời nhắn</th></tr></thead><tbody id="student-transactions"></tbody></table></div>
                     </div>
                 </div>
 
                 <div id="tab-casino" class="grid-layout student-grid" style="display: none; grid-template-columns: 1fr;">
                     <div class="glass-box section-card" style="border-color:var(--neon-pink);">
                         <div class="card-header" style="border-bottom: 1px solid var(--neon-pink); justify-content: center; padding-bottom: 25px;">
-                            <h2 class="text-pink glow-pulse" style="margin:0; font-size:28px; text-transform:uppercase;"><i class="fas fa-glass-martini-alt"></i> S-SYSTEM LAS VEGAS 🪩</h2>
+                            <h2 class="text-pink glow-pulse" style="margin:0; font-size:28px; text-transform:uppercase;"><i class="fas fa-glass-martini-alt"></i> School Main 88 VIP PRO 🪩</h2>
                         </div>
                         
                         <div style="margin: 20px 0; padding: 20px; border: 2px dashed var(--neon-pink); border-radius: 12px; background: rgba(255,0,255,0.05);">
@@ -120,12 +112,15 @@
                         <div class="casino-grid">
                             <div class="game-card pvp-card" style="color:var(--neon-pink);">
                                 <div>
-                                    <h3 class="text-pink glow-pulse" style="margin: 0 0 10px 0; font-size:24px;"><i class="fas fa-bolt"></i> NEON ARENA (PvP ONLINE) ⚔️</h3>
+                                    <h3 class="text-pink glow-pulse" style="margin: 0 0 10px 0; font-size:24px;"><i class="fas fa-bolt"></i> NEON ARENA (PvP) ⚔️</h3>
                                     <p style="font-size: 13px; color:#ddd; margin:0; height:auto;">Võ đài tử thần. Trực tiếp "Tiếp Chiêu" đối thủ. Kẻ sống sót ôm trọn tiền cược!</p>
                                 </div>
                                 <button onclick="openPvPModal()" class="btn-cyber" style="border-color:var(--neon-pink); color:var(--neon-pink); padding: 18px 35px; font-size:16px; background:rgba(255,0,255,0.1);">[ VÀO VÕ ĐÀI ]</button>
                             </div>
 
+                            <div class="game-card" style="color:#00ff80; border:2px solid #00ff80; box-shadow:0 0 15px rgba(0,255,128,0.3);"><h4 class="text-green glow-pulse">⚽ CÁ CƯỢC BÓNG ĐÁ</h4><p>Chọn Xanh/Đỏ. Sân cỏ 12 cầu thủ chạy 1 phút. Thắng x2!</p><button onclick="openFootballGame()" class="btn-cyber w-100" style="border-color:#00ff80; color:#00ff80;">[ XEM TRỰC TIẾP MATCH ]</button></div>
+                            <div class="game-card" style="color:var(--neon-blue); border:2px solid var(--neon-blue); box-shadow:0 0 15px rgba(0,240,255,0.3);"><h4 class="text-blue glow-pulse">✈️ KHÔNG CHIẾN CRASH</h4><p>Cất cánh từ hầm chứa. Chốt lời trước khi phi cơ địch bắn nổ!</p><button onclick="openAirplaneGame()" class="btn-cyber w-100" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ LÊN MÁY BAY CHƠI LIVE ]</button></div>
+                            <div class="game-card" style="color:#fff; border:2px solid #fff; box-shadow:0 0 15px rgba(255,255,255,0.3);"><h4 style="color:#fff" class="glow-pulse">🎲 TÀI XỈU 3D</h4><p>Nặn xúc xắc siêu chân thực. Bão cái húp trọn bàn.</p><div style="display:flex; gap:5px;"><button onclick="playTaiXiu('TAI')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">TÀI</button><button onclick="playTaiXiu('XIU')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">XỈU</button></div></div>
                             <div class="game-card" style="color:#ff69b4; border:2px solid #ff69b4; box-shadow:0 0 15px rgba(255,105,180,0.3);"><h4 style="color:#ff69b4" class="glow-pulse">🧸 GẮP GẤU BÔNG</h4><p>Gắp siêu cute. Trúng Kỳ Lân Hiếm ăn x10!</p><button onclick="playClawMachine()" class="btn-cyber w-100" style="border-color:#ff69b4; color:#ff69b4;">[ GẮP 1 LẦN ]</button></div>
                             <div class="game-card" style="color:#9370db; border:2px solid #9370db; box-shadow:0 0 15px rgba(147,112,219,0.3);"><h4 style="color:#9370db" class="glow-pulse">🃏 BÓI TAROT</h4><p>Lật bài vận mệnh. Tùy lá mà hốt tiền/mất trắng!</p><button onclick="playTarot()" class="btn-cyber w-100" style="border-color:#9370db; color:#9370db;">[ LẬT BÀI ]</button></div>
                             <div class="game-card" style="color:var(--neon-gold); border:2px solid var(--neon-gold); box-shadow:0 0 15px rgba(255,215,0,0.3);"><h4 class="text-gold glow-pulse">📈 TRADING CRYPTO</h4><p>Mua Coin. Gồng lãi 5 tháng. Chốt hay Hold?</p><button onclick="playCrypto()" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">[ ĐẦU TƯ LIỀN ]</button></div>
@@ -135,14 +130,12 @@
                             <div class="game-card" style="color:#d8b4e2; border:2px solid #d8b4e2; box-shadow:0 0 15px rgba(216,180,226,0.3);"><h4 style="color:#d8b4e2" class="glow-pulse">🔨 ĐẤU GIÁ RƯƠNG</h4><p>Rương chứa 1k-100k. Đấu trí ép giá Bot!</p><button onclick="playAuction()" class="btn-cyber w-100" style="border-color:#d8b4e2; color:#d8b4e2;">[ ĐẤU GIÁ NGAY ]</button></div>
 
                             <div class="game-card" style="color:#ff4500;"><h4 style="color:#ff4500">🐔 ĐÁ GÀ</h4><p>Tỉ lệ gà bạn gãy giò 60%. Thắng x2.</p><div style="display:flex; gap:5px;"><button onclick="playCockfight('RED')" class="btn-cyber w-100" style="border-color:#ff4500; color:#ff4500;">ĐỎ</button><button onclick="playCockfight('BLUE')" class="btn-cyber w-100" style="border-color:#ff4500; color:#ff4500;">XANH</button></div></div>
-                            <div class="game-card" style="color:#fff;"><h4 style="color:#fff">⚽ SÚT PENALTY</h4><p>Sút Trái, Giữa, Phải. Tỉ lệ vào 30%.</p><div style="display:flex; gap:5px;"><button onclick="playPenalty('LEFT')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">◀</button><button onclick="playPenalty('CENTER')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">▲</button><button onclick="playPenalty('RIGHT')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">▶</button></div></div>
                             <div class="game-card" style="color:var(--neon-gold);"><h4 class="text-gold">🃏 BÀI CÀO 3 LÁ</h4><p>So điểm 3 lá với nhà cái. Thắng x2.</p><button onclick="playThreeCards()" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">[ LÊN BÀI ]</button></div>
                             <div class="game-card" style="color:var(--neon-pink);"><h4 class="text-pink">🏹 MŨI TÊN TÌNH YÊU</h4><p>Bắn ngẫu nhiên hệ số từ x0 đến x4.</p><button onclick="playCupid()" class="btn-cyber w-100" style="border-color:var(--neon-pink); color:var(--neon-pink);">[ BẮN TÊN ]</button></div>
                             <div class="game-card" style="color:var(--neon-blue);"><h4 class="text-blue">🛡️ ĐỠ ĐẠN</h4><p>Tỉ lệ vỡ khiên rất cao. Đỡ thành công x1.3.</p><button onclick="playShield()" class="btn-cyber w-100" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ GIƯƠNG KHIÊN ]</button></div>
                             <div class="game-card" style="color:#8b4513;"><h4 style="color:#8b4513">🏴‍☠️ KHO BÁU HẢI TẶC</h4><p>Chọn đảo. Coi chừng gặp cướp biển!</p><div style="display:flex; gap:5px;"><button onclick="playPirate(1)" class="btn-cyber w-100" style="border-color:#8b4513; color:#8b4513;">Đ1</button><button onclick="playPirate(2)" class="btn-cyber w-100" style="border-color:#8b4513; color:#8b4513;">Đ2</button><button onclick="playPirate(3)" class="btn-cyber w-100" style="border-color:#8b4513; color:#8b4513;">Đ3</button></div></div>
                             <div class="game-card" style="color:var(--neon-gold);"><h4 class="text-gold">🥚 ĐẬP TRỨNG VÀNG</h4><p>Tỉ lệ 70% ra vàng x1.1. 30% ung.</p><button onclick="playEgg()" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">[ ĐẬP TRỨNG ]</button></div>
                             <div class="game-card" style="color:#fff;"><h4 style="color:#fff">🎲 ĐOÁN XÚC XẮC</h4><p>Đoán chính xác 1 mặt. Tỉ lệ 15%.</p><button onclick="playExactDice()" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">[ CHỌN SỐ ]</button></div>
-                            <div class="game-card" style="color:var(--neon-red);"><h4 class="text-red">🚀 CRASH TÀU BAY</h4><p>Chốt lời trước khi nổ. Dễ nổ sớm.</p><button onclick="playCrash()" class="btn-cyber w-100" style="border-color:var(--neon-red); color:var(--neon-red);">[ LÊN TÀU ]</button></div>
                             <div class="game-card" style="color:var(--neon-green);"><h4 class="text-green">🐉 RỒNG HỔ</h4><p>Cược Rồng hoặc Hổ. Nhà cái thu phế.</p><div style="display:flex; gap:5px;"><button onclick="playDragonTiger('DRAGON')" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green);">RỒNG</button><button onclick="playDragonTiger('TIGER')" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green);">HỔ</button></div></div>
                             <div class="game-card" style="color:var(--neon-blue);"><h4 class="text-blue">🎰 SLOT MACHINE</h4><p>Nhiều biểu tượng rác. Rất khó x10!</p><button onclick="playSlot()" class="btn-cyber w-100" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ QUAY ]</button></div>
                             <div class="game-card" style="color:var(--neon-green);"><h4 class="text-green">🍸 COCKTAIL ĐỘC</h4><p>6 ly, 2 ly có độc. Cược uống thử.</p><button onclick="playCocktail()" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green);">[ UỐNG - X1.2 ]</button></div>
@@ -157,7 +150,6 @@
                             <div class="game-card" style="color:var(--neon-gold);"><h4 class="text-gold">🏎️ ĐUA XE ĐÊM</h4><p>Nhà cái hay bơm đểu cho ngựa khác.</p><button onclick="playRace()" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">[ CHỌN XE ]</button></div>
                             <div class="game-card" style="color:var(--neon-pink);"><h4 class="text-pink">🎁 GACHA HỘP MÙ</h4><p>2% Jackpot | 10% X2 | 88% MẤT TRẮNG!</p><button onclick="rollGacha()" class="btn-cyber w-100" style="border-color:var(--neon-pink); color:var(--neon-pink);">[ QUAY 5K ]</button></div>
                             <div class="game-card" style="color:var(--neon-gold);"><h4 class="text-gold">🪙 ĐỒNG XU</h4><p>Tỉ lệ thắng bị nén xuống 40%.</p><div style="display:flex; gap:5px;"><button onclick="coinFlip('SAP')" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">SẤP</button><button onclick="coinFlip('NGUA')" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">NGỬA</button></div></div>
-                            <div class="game-card" style="color:#fff;"><h4 style="color:#fff;">🎲 TÀI XỈU</h4><p>Thỉnh thoảng nhà cái hốt trọn bão.</p><div style="display:flex; gap:5px;"><button onclick="playTaiXiu('TAI')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">TÀI</button><button onclick="playTaiXiu('XIU')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">XỈU</button></div></div>
                             <div class="game-card" style="color:#fff;"><h4 style="color:#fff;">🔢 CHẴN LẺ</h4><p>Đổ 1 xúc xắc. Đoán Chẵn Lẻ.</p><div style="display:flex; gap:5px;"><button onclick="playChanLe('CHAN')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">CHẴN</button><button onclick="playChanLe('LE')" class="btn-cyber w-100" style="border-color:#fff; color:#fff;">LẺ</button></div></div>
                             <div class="game-card" style="color:var(--neon-red);"><h4 class="text-red">🎡 ROULETTE</h4><p>Xanh lá 2%, Đỏ 40%, Đen 58%.</p><div style="display:flex; gap:5px;"><button onclick="playRoulette('RED')" class="btn-cyber w-100" style="background:#ff003c; color:#fff; border:none;">ĐỎ</button><button onclick="playRoulette('BLACK')" class="btn-cyber w-100" style="background:#000; color:#fff; border:1px solid #555;">ĐEN</button></div></div>
                             <div class="game-card" style="color:var(--neon-green);"><h4 class="text-green">💻 HACK TERMINAL</h4><p>Nhà cái có 12 mã, bạn chọn 1-10.</p><button onclick="playTerminal()" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green);">[ HACK ]</button></div>
@@ -171,7 +163,6 @@
                             <div class="game-card" style="color:#ff0080;"><h4 style="color:#ff0080;">🔮 KENO BAR</h4><p>Chọn 1 số từ 1-20. Trúng ăn x10.</p><button onclick="playKeno()" class="btn-cyber w-100" style="border-color:#ff0080; color:#ff0080;">[ QUAY SỐ ]</button></div>
                             <div class="game-card" style="color:var(--neon-gold);"><h4 class="text-gold">⛏️ ĐÀO ĐÁ QUÝ</h4><p>Tỷ lệ nổ bom tăng lên 40%.</p><button onclick="playMine()" class="btn-cyber w-100" style="border-color:var(--neon-gold); color:var(--neon-gold);">[ ĐÀO ]</button></div>
                             <div class="game-card" style="color:var(--neon-red);"><h4 class="text-red">✊ KÉO BÚA BAO</h4><p>Máy sẽ hack nhẹ nhìn trộm bạn.</p><div style="display:flex; gap:5px;"><button onclick="rpsGame('BUA')" class="btn-cyber w-100" style="border-color:var(--neon-red); color:var(--neon-red);">✊</button><button onclick="rpsGame('KEO')" class="btn-cyber w-100" style="border-color:var(--neon-red); color:var(--neon-red);">✌️</button><button onclick="rpsGame('BAO')" class="btn-cyber w-100" style="border-color:var(--neon-red); color:var(--neon-red);">✋</button></div></div>
-                            <div class="game-card" style="color:var(--neon-blue);"><h4 class="text-blue">✨ HOÀNG ĐẠO</h4><p>Cược 1 trong 12 cung. Trúng x10.</p><button onclick="playZodiac()" class="btn-cyber w-100" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ QUAY ]</button></div>
                         </div>
 
                         <div class="card-header" style="margin-top: 30px; border-bottom: 1px solid var(--neon-gold);">
@@ -180,7 +171,6 @@
                         <div class="table-container" style="max-height: 400px;"><table class="cyber-table"><thead><tr><th>UID</th><th>Tên Dân Chơi</th><th>Tài Sản (PP)</th></tr></thead><tbody id="top-50-students"></tbody></table></div>
                     </div>
                 </div>
-
             </div>
 
             <div id="teacher-view" style="display: none;">
@@ -197,17 +187,10 @@
                             </div>
                             <button onclick="adminCreateUser()" class="btn-cyber w-100" style="margin-top:10px; border-color:var(--neon-blue); color:var(--neon-blue);">[ TẠO TÀI KHOẢN ]</button>
                         </div>
-                        
                         <div class="glass-box section-card" style="margin-bottom:20px; border-color:var(--neon-gold);">
                             <div class="card-header"><h3><i class="fas fa-university"></i> LỊCH SỬ CHUYỂN KHOẢN (TOÀN TRƯỜNG)</h3></div>
-                            <div class="table-container" style="max-height: 300px;">
-                                <table class="cyber-table">
-                                    <thead><tr><th>Thời gian</th><th>Người Gửi</th><th>Người Nhận</th><th>Số Lượng PP</th><th>Lời nhắn</th></tr></thead>
-                                    <tbody id="admin-transactions"></tbody>
-                                </table>
-                            </div>
+                            <div class="table-container" style="max-height: 300px;"><table class="cyber-table"><thead><tr><th>Thời gian</th><th>Người Gửi</th><th>Người Nhận</th><th>Số Lượng PP</th><th>Lời nhắn</th></tr></thead><tbody id="admin-transactions"></tbody></table></div>
                         </div>
-
                         <div class="glass-box section-card" style="margin-bottom:20px;">
                             <div class="card-header" style="justify-content: space-between;">
                                 <h3><i class="fas fa-users"></i> QUẢN LÝ SINH VIÊN</h3>
@@ -229,7 +212,7 @@
                                 <select id="q-correct" class="cyber-input" style="grid-column: span 2;"><option value="A">Đúng A</option><option value="B">Đúng B</option></select>
                                 <input type="number" id="q-pp" placeholder="PP Thưởng (VD: 50000)" class="cyber-input"><input type="number" id="q-penalty" placeholder="PP Phạt (VD: 5000)" class="cyber-input">
                                 <input type="number" id="q-limit" placeholder="Slot Tối Đa" class="cyber-input"><input type="number" id="q-max-attempts" placeholder="Lượt làm bài" class="cyber-input">
-                                <input type="number" id="q-time" placeholder="Giây đếm ngược (0=Không)" class="cyber-input">
+                                <input type="number" id="q-time" placeholder="Giây đếm ngược" class="cyber-input">
                                 <div style="display: flex; align-items: center; background: rgba(0,0,0,0.6); border: 1px solid #30363d; border-radius: 8px; padding: 0 5px;">
                                     <span style="font-size: 10px; color:#888; margin-right: 5px;">Hạn chót:</span>
                                     <input type="date" id="q-deadline" class="cyber-input" style="border:none; padding:10px 5px; flex:1; outline:none; background:transparent;">
@@ -237,72 +220,107 @@
                             </div>
                             <button onclick="adminCreateQuest()" class="btn-cyber w-100" style="margin-top:15px; border-color:var(--neon-green); color:var(--neon-green);">[ ĐĂNG QUIZ LÊN HỆ THỐNG ]</button>
                         </div>
-                        <div class="glass-box section-card">
-                            <div class="card-header"><h3><i class="fas fa-list"></i> QUIZ ĐANG MỞ</h3></div>
-                            <div id="admin-quest-list" class="table-container" style="max-height:250px;"></div>
-                        </div>
-                        <div class="glass-box section-card" style="margin-top:20px;">
-                            <h3> CHỈNH CP LỚP</h3>
-                            <button onclick="forceInitClasses()" class="btn-mini add w-100" style="margin-bottom:5px;">🛠️ ĐỦ 16 LỚP</button>
-                            <div class="table-container" style="max-height: 250px;"><table class="cyber-table"><tbody id="admin-class-control"></tbody></table></div>
-                        </div>
+                        <div class="glass-box section-card"><div class="card-header"><h3><i class="fas fa-list"></i> QUIZ ĐANG MỞ</h3></div><div id="admin-quest-list" class="table-container" style="max-height:250px;"></div></div>
+                        <div class="glass-box section-card" style="margin-top:20px;"><h3> CHỈNH CP LỚP</h3><button onclick="forceInitClasses()" class="btn-mini add w-100" style="margin-bottom:5px;">🛠️ ĐỦ 16 LỚP</button><div class="table-container" style="max-height: 250px;"><table class="cyber-table"><tbody id="admin-class-control"></tbody></table></div></div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <div id="result-modal" class="overlay" style="display:none; z-index: 5000;">
+    <div id="result-modal" class="overlay" style="display:none; z-index: 9999;">
         <div class="glass-box login-panel" style="width:450px; text-align:center;">
-            <h1 id="result-title" class="text-gold glow-pulse" style="font-size:35px; margin:0 0 10px 0;">THẮNG!</h1>
+            <i id="result-icon" class="fas fa-spinner fa-spin fa-3x text-blue" style="margin-bottom:15px; display:block;"></i>
+            <h1 id="result-title" class="text-blue glow-pulse" style="font-size:35px; margin:0 0 10px 0;">ĐANG XỬ LÝ...</h1>
             <p id="result-msg" style="font-size:16px; margin:20px 0; line-height:1.6; color:#ccc;"></p>
-            <button onclick="document.getElementById('result-modal').style.display='none'" class="btn-cyber w-100" style="font-size:16px; padding:15px;">[ TIẾP TỤC ]</button>
+            <button id="result-close-btn" onclick="document.getElementById('result-modal').style.display='none'" class="btn-cyber w-100" style="font-size:16px; padding:15px; display:none;">[ TIẾP TỤC ]</button>
+        </div>
+    </div>
+
+    <div id="football-modal" class="overlay" style="display:none; z-index: 5000;">
+        <div class="glass-box login-panel" style="width:700px; border-color:#00ff80;">
+            <h2 class="text-green glow-pulse" style="margin-top:0;"><i class="fas fa-futbol"></i> TRỰC TIẾP: TRẬN ĐẤU 1 PHÚT</h2>
+            <h2 id="fb-score" style="margin: 10px 0 20px 0; font-size:30px;"><span class="fb-team-xanh">XANH 0</span> - <span class="fb-team-do">0 ĐỎ</span></h2>
+            
+            <div class="football-pitch" id="fb-pitch">
+                <div class="goal-left"></div>
+                <div class="goal-right"></div>
+                <i class="fas fa-hands fb-player fb-team-xanh" id="p-xanh-gk"></i>
+                <i class="fas fa-user-circle fb-player fb-team-xanh" id="p-xanh-1"></i>
+                <i class="fas fa-user-circle fb-player fb-team-xanh" id="p-xanh-2"></i>
+                <i class="fas fa-user-circle fb-player fb-team-xanh" id="p-xanh-3"></i>
+                <i class="fas fa-user-circle fb-player fb-team-xanh" id="p-xanh-4"></i>
+                <i class="fas fa-user-circle fb-player fb-team-xanh" id="p-xanh-5"></i>
+                
+                <i class="fas fa-hands fb-player fb-team-do" id="p-do-gk"></i>
+                <i class="fas fa-user-circle fb-player fb-team-do" id="p-do-1"></i>
+                <i class="fas fa-user-circle fb-player fb-team-do" id="p-do-2"></i>
+                <i class="fas fa-user-circle fb-player fb-team-do" id="p-do-3"></i>
+                <i class="fas fa-user-circle fb-player fb-team-do" id="p-do-4"></i>
+                <i class="fas fa-user-circle fb-player fb-team-do" id="p-do-5"></i>
+                
+                <i class="fas fa-futbol soccer-ball" id="fb-ball"></i>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; color:#aaa; margin-bottom:10px;">
+                <span id="fb-time" style="font-weight:bold; color:#fff;">Phút: 0'</span>
+                <span>Trận đấu diễn ra trong 60 giây</span>
+            </div>
+
+            <div id="fb-commentary" style="background: rgba(0,0,0,0.8); border: 1px solid #555; padding: 15px; height: 60px; color: #ddd; font-family: monospace; font-size: 14px; margin-bottom: 20px; border-radius: 8px; display:flex; align-items:center; justify-content:center; text-align:center;">Đang chờ đặt cược...</div>
+            <div id="fb-controls" style="display:flex; gap:10px; margin-bottom:15px;"><input type="number" id="fb-bet" placeholder="Nhập PP cược..." class="cyber-input w-100" style="font-size:18px; color:var(--neon-gold); text-align:center; font-weight:bold;"></div>
+            <div id="fb-actions" style="display:flex; gap:10px;"><button onclick="startFootballMatch('XANH')" class="btn-cyber w-100" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ CƯỢC XANH ]</button><button onclick="startFootballMatch('DO')" class="btn-cyber w-100" style="border-color:var(--neon-red); color:var(--neon-red);">[ CƯỢC ĐỎ ]</button></div>
+            <button id="fb-exit-btn" onclick="closeFootballGame()" class="btn-cyber w-100" style="background:transparent; border:none; color:#888; margin-top:10px;">[ RỜI KHÁN ĐÀI ]</button>
+        </div>
+    </div>
+
+    <div id="airplane-modal" class="overlay" style="display:none; z-index: 4000;">
+        <div class="glass-box login-panel" style="width:600px; border-color:var(--neon-blue);">
+            <h2 class="text-blue glow-pulse" style="margin-top:0;"><i class="fas fa-fighter-jet"></i> KHÔNG CHIẾN SINH TỬ</h2>
+            <div class="sky-container" id="sky-zone">
+                <div class="multiplier-display" id="flight-multiplier">x0.00</div>
+                <div class="flight-hangar" id="p-hangar"></div>
+                <div class="flight-runway" id="p-runway"></div>
+                <i class="fas fa-space-shuttle player-plane" id="p-plane"></i>
+                <i class="fas fa-fighter-jet enemy-plane" id="e-plane"></i>
+                <div class="laser-beam" id="e-laser"></div>
+                <div class="boom-effect" id="p-boom">💥</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-bottom:15px;"><input type="number" id="flight-bet" placeholder="Nhập PP cược..." class="cyber-input w-100" style="font-size:18px; color:var(--neon-gold); text-align:center; font-weight:bold;"></div>
+            <button id="flight-action-btn" onclick="startFlight()" class="btn-cyber w-100" style="padding:15px; font-size:18px; border-color:var(--neon-gold); color:var(--neon-gold);">[ ĐẶT CƯỢC & CẤT CÁNH ]</button>
+            <button id="flight-exit-btn" onclick="closeAirplaneGame()" class="btn-cyber w-100" style="background:transparent; border:none; color:#888; margin-top:10px;">[ THOÁT KHỎI SÂN BAY ]</button>
+        </div>
+    </div>
+
+    <div id="taixiu-modal" class="overlay" style="display:none; z-index: 6000;">
+        <div class="glass-box login-panel" style="width:500px; padding: 30px; border-color:#fff;">
+            <h2 class="text-gold glow-pulse" style="margin: 0 0 20px 0; font-size:30px;"><i class="fas fa-dice"></i> TÀI XỈU 3D</h2>
+            <div class="tx-board">
+                <div class="tx-plate"></div>
+                <div class="tx-dice-wrap"><i class="fas fa-dice-one tx-dice red" id="tx-d1"></i><i class="fas fa-dice-two tx-dice black" id="tx-d2"></i><i class="fas fa-dice-three tx-dice red" id="tx-d3"></i></div>
+                <div class="tx-cup" id="taixiu-cup" title="Kéo bát để Nặn!"></div>
+            </div>
+            <p style="color:#aaa; font-size:13px; margin:20px 0;">Hãy Dùng Chuột (Hoặc Tay) KÉO CÁI BÁT ĐỂ NẶN<br>Hoặc bấm nút bên dưới để mở ngay lập tức!</p>
+            <button onclick="openTaiXiuInstant()" class="btn-cyber w-100" style="border-color:#fff; color:#fff; font-size:16px; padding:15px;">[ MỞ BÁT NGAY ]</button>
         </div>
     </div>
 
     <div id="pvp-modal" class="overlay" style="display:none; z-index: 3000;">
         <div class="glass-box login-panel" style="width:750px; background: rgba(10,0,20,0.95); border-color:var(--neon-pink);">
             <h2 class="text-pink glow-pulse" style="margin-top:0; font-size:30px;"><i class="fas fa-bolt"></i> VÕ ĐÀI NEON ARENA</h2>
-            
             <div style="display:flex; justify-content:space-between; align-items:center; margin: 30px 0; padding: 20px; background: rgba(255,0,255,0.05); border-radius: 12px; border: 1px solid rgba(255,0,255,0.2);">
-                <div style="text-align:center; flex:1;">
-                    <div style="position:relative; display:inline-block;"><img id="pvp-p1-avatar" src="" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--neon-blue); object-fit:cover; box-shadow: 0 0 20px var(--neon-blue);"></div>
-                    <h3 id="pvp-p1-name" class="text-blue" style="margin:15px 0 5px 0;">...</h3>
-                    <div style="width: 100%; height: 10px; background: #333; border-radius: 5px; margin-top: 10px; overflow: hidden; border: 1px solid #00f0ff;"><div id="pvp-p1-hp" style="height: 100%; background: #00f0ff; width: 100%; transition: 0.3s;"></div></div>
-                </div>
-                <div style="flex:1; text-align:center;">
-                    <h1 class="text-red glow-pulse" style="margin:0; font-size:50px; font-weight:900; font-style:italic;">VS</h1>
-                    <div id="pvp-pot" style="margin-top:15px; font-size:18px; font-weight:bold; color:var(--neon-gold); text-shadow:0 0 10px var(--neon-gold); border: 1px solid var(--neon-gold); padding: 5px 15px; border-radius:20px; display:inline-block;">CƯỢC: 0 PP</div>
-                </div>
-                <div style="text-align:center; flex:1;">
-                    <div style="position:relative; display:inline-block;"><img id="pvp-p2-avatar" src="https://i.pravatar.cc/150?u=enemy" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--neon-red); object-fit:cover; box-shadow: 0 0 20px var(--neon-red);"></div>
-                    <h3 id="pvp-p2-name" class="text-red" style="margin:15px 0 5px 0;">ĐỐI THỦ</h3>
-                    <div style="width: 100%; height: 10px; background: #333; border-radius: 5px; margin-top: 10px; overflow: hidden; border: 1px solid #ff003c;"><div id="pvp-p2-hp" style="height: 100%; background: #ff003c; width: 100%; transition: 0.3s;"></div></div>
-                </div>
+                <div style="text-align:center; flex:1;"><div style="position:relative; display:inline-block;"><img id="pvp-p1-avatar" src="" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--neon-blue); object-fit:cover; box-shadow: 0 0 20px var(--neon-blue);"></div><h3 id="pvp-p1-name" class="text-blue" style="margin:15px 0 5px 0;">...</h3><div style="width: 100%; height: 10px; background: #333; border-radius: 5px; margin-top: 10px; overflow: hidden; border: 1px solid #00f0ff;"><div id="pvp-p1-hp" style="height: 100%; background: #00f0ff; width: 100%; transition: 0.3s;"></div></div></div>
+                <div style="flex:1; text-align:center;"><h1 class="text-red glow-pulse" style="margin:0; font-size:50px; font-weight:900; font-style:italic;">VS</h1><div id="pvp-pot" style="margin-top:15px; font-size:18px; font-weight:bold; color:var(--neon-gold); text-shadow:0 0 10px var(--neon-gold); border: 1px solid var(--neon-gold); padding: 5px 15px; border-radius:20px; display:inline-block;">CƯỢC: 0 PP</div></div>
+                <div style="text-align:center; flex:1;"><div style="position:relative; display:inline-block;"><img id="pvp-p2-avatar" src="https://i.pravatar.cc/150?u=enemy" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--neon-red); object-fit:cover; box-shadow: 0 0 20px var(--neon-red);"></div><h3 id="pvp-p2-name" class="text-red" style="margin:15px 0 5px 0;">ĐỐI THỦ</h3><div style="width: 100%; height: 10px; background: #333; border-radius: 5px; margin-top: 10px; overflow: hidden; border: 1px solid #ff003c;"><div id="pvp-p2-hp" style="height: 100%; background: #ff003c; width: 100%; transition: 0.3s;"></div></div></div>
             </div>
-
-            <div id="pvp-action-area">
-                <button onclick="pvpCreate()" class="btn-cyber w-100" style="padding:15px; font-size:14px; border-color:var(--neon-pink); color:var(--neon-pink);">[ TẠO PHÒNG CƯỢC MỚI ]</button>
-                <div id="pvp-list" style="margin-top:20px; max-height:180px; overflow-y:auto; text-align:left;">
-                    <p style="color:#888; text-align:center; margin-top:20px;">Đang tải danh sách phòng...</p>
-                </div>
-                <button onclick="closePvPModal()" class="btn-cyber w-100" style="background:transparent; border:none; color:#888; margin-top:20px;">[ RỜI ĐẤU TRƯỜNG ]</button>
-            </div>
-
-            <div id="pvp-battle-area" style="display:none; text-align:center;">
-                <div id="pvp-log-box" style="background: rgba(0,0,0,0.8); border: 1px solid #555; padding: 15px; height: 80px; overflow-y: auto; color: #ddd; font-family: monospace; font-size: 13px; margin-bottom: 20px; border-radius: 8px;">Đang chờ diễn biến trận đấu...</div>
-                <div id="pvp-controls" style="display:flex; gap:10px;">
-                    <button onclick="pvpAction('ATTACK')" class="btn-cyber w-100" style="border-color:#ff4500; color:#ff4500;">🗡️ CHÉM THƯỜNG</button>
-                    <button onclick="pvpAction('HEAVY')" class="btn-cyber w-100" style="border-color:var(--neon-pink); color:var(--neon-pink);">⚡ CHÍ MẠNG (50%)</button>
-                    <button onclick="pvpAction('HEAL')" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green);">🛡️ HỒI MÁU</button>
-                </div>
-                <div id="pvp-wait-msg" style="display:none; color:#888; font-style:italic; padding: 15px;">Đang chờ đối thủ ra chiêu...</div>
-            </div>
+            <div id="pvp-action-area"><button onclick="pvpCreate()" class="btn-cyber w-100" style="padding:15px; font-size:14px; border-color:var(--neon-pink); color:var(--neon-pink);">[ TẠO PHÒNG CƯỢC MỚI ]</button><div id="pvp-list" style="margin-top:20px; max-height:180px; overflow-y:auto; text-align:left;"></div><button onclick="closePvPModal()" class="btn-cyber w-100" style="background:transparent; border:none; color:#888; margin-top:20px;">[ RỜI ĐẤU TRƯỜNG ]</button></div>
+            <div id="pvp-battle-area" style="display:none; text-align:center;"><div id="pvp-log-box" style="background: rgba(0,0,0,0.8); border: 1px solid #555; padding: 15px; height: 80px; overflow-y: auto; color: #ddd; font-family: monospace; font-size: 13px; margin-bottom: 20px; border-radius: 8px;">Đang chờ diễn biến...</div><div id="pvp-controls" style="display:flex; gap:10px;"><button onclick="pvpAction('ATTACK')" class="btn-cyber w-100" style="border-color:#ff4500; color:#ff4500;">🗡️ CHÉM THƯỜNG</button><button onclick="pvpAction('HEAVY')" class="btn-cyber w-100" style="border-color:var(--neon-pink); color:var(--neon-pink);">⚡ CHÍ MẠNG</button><button onclick="pvpAction('HEAL')" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green);">🛡️ HỒI MÁU</button></div><div id="pvp-wait-msg" style="display:none; color:#888; font-style:italic; padding: 15px;">Đang chờ đối thủ ra chiêu...</div></div>
         </div>
     </div>
 
     <div id="quiz-modal" class="overlay" style="display:none; z-index: 2000;"><div class="glass-box login-panel" style="border-color:var(--neon-blue); text-align:left; width:500px;"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><h3 id="quiz-title" class="text-blue" style="margin-top:0;"></h3><h3 id="quiz-timer" class="text-red glow-pulse" style="margin-top:0; white-space: nowrap;"></h3></div><p id="quiz-question" style="font-size:18px; margin:20px 0;"></p><p id="quiz-info" style="font-size:12px; color:#888; margin-bottom:15px;"></p><button onclick="submitQuiz('A')" class="btn-cyber w-100" style="background:rgba(0,0,0,0.5); text-align:left; margin-bottom:10px; padding:15px;"><strong class="text-blue">A.</strong> <span id="quiz-optA"></span></button><button onclick="submitQuiz('B')" class="btn-cyber w-100" style="background:rgba(0,0,0,0.5); text-align:left; margin-bottom:10px; padding:15px;"><strong class="text-blue">B.</strong> <span id="quiz-optB"></span></button><button onclick="closeQuizModal()" class="btn-outline-gold w-100">[ BỎ CHẠY ]</button></div></div>
     <div id="view-grades-modal" class="overlay" style="display:none; z-index: 1000;"><div class="glass-box login-panel" style="width:850px; max-height:85vh; display:flex; flex-direction:column; padding:30px;"><h3 class="text-gold">[ HỒ SƠ ĐIỂM CHI TIẾT ]</h3><p id="view-grades-student-name" class="text-blue" style="margin-bottom:15px;"></p><div class="table-container" style="flex:1; overflow-y:auto; border:1px solid #333; margin:15px 0;"><table class="cyber-table"><thead><tr><th>Kỳ</th><th>Môn</th><th>T</th><th>G</th><th>C</th><th>Tổng</th><th>Lưu</th></tr></thead><tbody id="admin-view-grades-body"></tbody></table></div><button onclick="closeViewGradesModal()" class="btn-cyber w-100">[ ĐÓNG ]</button></div></div>
+    <div id="subject-modal" class="overlay" style="display:none; z-index: 1000;"><div class="glass-box login-panel" style="width:450px; border-color:var(--neon-green);"><h3 class="text-green">[ NHẬP ĐIỂM MÔN MỚI ]</h3><div style="display:flex; gap:10px; margin-bottom:10px;"><select id="subj-year" class="cyber-input w-100"><option value="1">Năm 1</option><option value="2">Năm 2</option><option value="3">Năm 3</option><option value="4">Năm 4</option></select><select id="subj-sem" class="cyber-input w-100"><option value="1">Kỳ 1</option><option value="2">Kỳ 2</option></select></div><input type="text" id="subj-name" placeholder="Tên môn học" class="cyber-input w-100" style="margin-bottom:10px;"><div style="display:flex; gap:10px; margin-bottom:20px;"><input type="number" id="subj-bth" placeholder="Điểm T" class="cyber-input"><input type="number" id="subj-gk" placeholder="Điểm G" class="cyber-input"><input type="number" id="subj-ck" placeholder="Điểm C" class="cyber-input"></div><button onclick="adminSaveSubject()" class="btn-cyber w-100" style="border-color:var(--neon-green); color:var(--neon-green); margin-bottom:10px;">[ LƯU ĐIỂM ]</button><button onclick="closeSubjectModal()" class="btn-cyber w-100" style="background:transparent; border:none; color:#888;">[ HỦY ]</button></div></div>
 
     <script type="module" src="script.js"></script>
 </body>
