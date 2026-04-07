@@ -83,7 +83,11 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .game-card h4 { font-size: 16px; margin: 0 0 8px 0; letter-spacing: 1px; text-transform: uppercase; font-weight: 900; }
 .game-card p { font-size: 12px; color: #aaa; margin: 0 0 15px 0; line-height: 1.5; height: 36px;}
 .game-card .btn-cyber { padding: 10px; font-size: 12px; background: rgba(0,0,0,0.8); border-width: 2px; }
+
+/* BANNERS LỚN CỦA CASINO */
 .pvp-card { background: linear-gradient(135deg, rgba(255,0,60,0.15) 0%, rgba(255,0,255,0.15) 100%); border: 2px solid var(--neon-pink); grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 25px 30px; }
+.tl-banner { background: linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,69,0,0.15) 100%); border: 2px solid var(--neon-gold); grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; text-align: left; padding: 25px 30px; box-shadow: 0 0 20px rgba(255,215,0,0.2); }
+
 .room-item { background: rgba(0,0,0,0.5); border: 1px solid #444; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
 .room-item:hover { border-color: var(--neon-gold); background: rgba(255,215,0,0.1); }
 
@@ -98,7 +102,7 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .shake-anim { animation: shakeCup 0.3s ease-in-out infinite; }
 @keyframes shakeCup { 0% { transform: translate(3px, 3px) rotate(0deg); } 25% { transform: translate(-3px, -3px) rotate(-2deg); } 50% { transform: translate(-3px, 3px) rotate(2deg); } 75% { transform: translate(3px, -3px) rotate(-2deg); } 100% { transform: translate(3px, 3px) rotate(0deg); } }
 
-/* MÁY BAY KHÔNG CHIẾN 2.0 */
+/* MÁY BAY KHÔNG CHIẾN 2.0 & CRYPTO LIVE */
 .sky-container { position: relative; width: 100%; height: 250px; background: linear-gradient(to bottom, #000411, #0a0a2a); border: 2px solid var(--neon-blue); border-radius: 10px; overflow: hidden; margin-bottom: 20px; box-shadow: inset 0 0 30px rgba(0,240,255,0.2); }
 .flight-hangar { position: absolute; bottom: 0; left: 0; width: 80px; height: 50px; background: #222; border-right: 3px solid #555; border-top: 3px solid #555; border-radius: 0 10px 0 0; z-index: 2; box-shadow: 10px 0 20px rgba(0,0,0,0.8); }
 .flight-runway { position: absolute; bottom: 0; left: 0; width: 200%; height: 10px; background: repeating-linear-gradient(90deg, #fff 0, #fff 20px, #333 20px, #333 40px); z-index: 1; transition: transform 2s linear; }
@@ -111,17 +115,38 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 @keyframes explodeAnim { 0% { transform: scale(0.2); opacity: 1; } 40% { transform: scale(1.8); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
 .multiplier-display { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 80px; font-weight: 900; color: rgba(255,255,255,0.1); z-index: 1; font-family: 'JetBrains Mono', monospace; transition: color 0.3s; }
 
-/* --- CSS BÓNG ĐÁ CHUYÊN NGHIỆP CÓ 12 CẦU THỦ SIÊU MƯỢT --- */
+/* BÓNG ĐÁ */
 .football-pitch { position: relative; width: 100%; height: 250px; background: #2e8b57; border: 4px solid #fff; border-radius: 10px; margin-bottom: 20px; overflow: hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
 .football-pitch::before { content:''; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #fff; transform: translateX(-50%); opacity: 0.8;}
 .football-pitch::after { content:''; position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; border: 4px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.8;}
 .goal-left { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 30px; height: 100px; border: 4px solid #fff; border-left: none; }
 .goal-right { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 30px; height: 100px; border: 4px solid #fff; border-right: none; }
-
-/* Hiệu ứng lướt siêu êm (1 giây) */
 .fb-player { position: absolute; font-size: 20px; z-index: 4; transition: left 1s linear, top 1s linear; transform: translate(-50%, -50%); }
 .fb-team-xanh { color: #00f0ff; filter: drop-shadow(0 0 8px #00f0ff); }
 .fb-team-do { color: #ff003c; filter: drop-shadow(0 0 8px #ff003c); } 
-
-/* Bóng bay mượt */
 .soccer-ball { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 16px; color: #fff; z-index: 5; transition: left 0.5s ease-out, top 0.5s ease-out; text-shadow: 0 5px 5px rgba(0,0,0,0.8); }
+
+/* --- CSS TIẾN LÊN MIỀN NAM --- */
+.tl-seat { position: absolute; text-align: center; z-index: 5;}
+.tl-player-badge { background: linear-gradient(180deg, rgba(30,30,30,0.9), rgba(10,10,10,0.9)); border: 2px solid #555; padding: 10px 15px; border-radius: 12px; display: inline-flex; align-items: center; gap: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.8); min-width: 150px; text-align: left;}
+.tl-player-badge.active-turn { border-color: var(--neon-gold); box-shadow: 0 0 20px var(--neon-gold); animation: pulseTurn 1s infinite; }
+@keyframes pulseTurn { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.tl-player-badge.passed { opacity: 0.4; filter: grayscale(1); border-color: #333; }
+
+.tl-card { width: 85px; height: 120px; background: #fff; border-radius: 8px; border: 1px solid #aaa; position: relative; 
+    margin-left: -35px; /* Sửa từ -50px thành -35px để thấy số và chữ cực kì rõ ràng */
+    box-shadow: -4px 8px 15px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; padding-top: 8px; cursor: pointer; transition: transform 0.15s ease, margin 0.3s ease; user-select: none; }
+.tl-card:first-child { margin-left: 0; }
+.tl-card:hover { transform: translateY(-15px); }
+.tl-card.selected { transform: translateY(-30px); border: 3px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); z-index: 100; }
+
+.tl-card .rank { font-size: 32px; font-weight: 900; line-height: 1; }
+.tl-card .suit { font-size: 38px; line-height: 1; margin-top: 5px; }
+.tl-card.red-suit { color: #d32f2f; }
+.tl-card.black-suit { color: #111; }
+
+.tl-card-back { width: 35px; height: 50px; background: repeating-linear-gradient(45deg, #b71c1c, #b71c1c 5px, #d32f2f 5px, #d32f2f 10px); border: 2px solid #fff; border-radius: 4px; display: inline-block; margin-left: -20px; box-shadow: -2px 2px 5px rgba(0,0,0,0.5); }
+.tl-card-back:first-child { margin-left: 0; }
+
+.tl-played-card { position: absolute; margin-left: 0; animation: throwCard 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
+@keyframes throwCard { 0% { transform: scale(0.3) translate(0, 200px) rotate(0deg); opacity: 0; } 100% { transform: scale(1) translate(0, 0) rotate(var(--rot)); opacity: 1; } }
