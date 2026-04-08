@@ -163,3 +163,5 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
     90% { transform: scale(1.05); filter: sepia(1) hue-rotate(-50deg) saturate(5); }
     100% { transform: scale(1); filter: sepia(0) hue-rotate(0deg); }
 }
+
+}
