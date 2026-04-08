@@ -134,8 +134,7 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 .tl-player-badge.passed { opacity: 0.4; filter: grayscale(1); border-color: #333; }
 
 .tl-card { width: 85px; height: 120px; background: #fff; border-radius: 8px; border: 1px solid #aaa; position: relative; 
-    margin-left: -35px; /* Sửa từ -50px thành -35px để thấy số và chữ cực kì rõ ràng */
-    box-shadow: -4px 8px 15px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; padding-top: 8px; cursor: pointer; transition: transform 0.15s ease, margin 0.3s ease; user-select: none; }
+    margin-left: -35px; box-shadow: -4px 8px 15px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; padding-top: 8px; cursor: pointer; transition: transform 0.15s ease, margin 0.3s ease; user-select: none; }
 .tl-card:first-child { margin-left: 0; }
 .tl-card:hover { transform: translateY(-15px); }
 .tl-card.selected { transform: translateY(-30px); border: 3px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); z-index: 100; }
@@ -150,3 +149,17 @@ body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-deep); 
 
 .tl-played-card { position: absolute; margin-left: 0; animation: throwCard 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
 @keyframes throwCard { 0% { transform: scale(0.3) translate(0, 200px) rotate(0deg); opacity: 0; } 100% { transform: scale(1) translate(0, 0) rotate(var(--rot)); opacity: 1; } }
+
+/* --- CSS THÊM CHO SÀN CRYPTO & GOLD MARKET --- */
+.cr-profit { color: var(--neon-green) !important; font-weight: bold; text-shadow: 0 0 5px var(--neon-green); }
+.cr-loss { color: var(--neon-red) !important; font-weight: bold; text-shadow: 0 0 5px var(--neon-red); }
+.cr-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 900; }
+.cr-badge.long { background: rgba(0,255,128,0.2); border: 1px solid var(--neon-green); color: var(--neon-green); }
+.cr-badge.short { background: rgba(255,0,60,0.2); border: 1px solid var(--neon-red); color: var(--neon-red); }
+.cr-crash-anim { animation: crashScreen 1s ease-in-out; }
+@keyframes crashScreen {
+    0% { transform: scale(1); filter: sepia(0) hue-rotate(0deg); }
+    10% { transform: scale(1.05); filter: sepia(1) hue-rotate(-50deg) saturate(5); }
+    90% { transform: scale(1.05); filter: sepia(1) hue-rotate(-50deg) saturate(5); }
+    100% { transform: scale(1); filter: sepia(0) hue-rotate(0deg); }
+}
