@@ -29,8 +29,7 @@ window.switchTab = (tab) => {
     if(document.getElementById(`nav-${tab}`)) document.getElementById(`nav-${tab}`).classList.add('active'); 
     if(document.getElementById(`tab-${tab}`)) document.getElementById(`tab-${tab}`).style.display = 'grid'; 
 
-    // FIX LỖI CHART TRẮNG KHI CHUYỂN TAB
-    if(tab === 'gold' && goldChartObj) {
+    if(tab === 'gold' && typeof goldChartObj !== 'undefined' && goldChartObj) {
         setTimeout(() => { goldChartObj.resize(); goldChartObj.update(); }, 150);
     }
 };
@@ -406,7 +405,130 @@ window.startFootballMatch = async (choice) => {
 };
 
 // ==========================================
-// 💰 GOLD MARKET REALTIME (VIP PRO)
+// ✈️ KHÔNG CHIẾN CRASH (FIXED)
+// ==========================================
+window.openAirplaneGame = () => {
+    document.getElementById('airplane-modal').style.display = 'flex';
+    resetAirplaneUI();
+};
+
+window.closeAirplaneGame = () => {
+    if(isFlying) return alert("Đang bay không được nhảy dù ngang!");
+    document.getElementById('airplane-modal').style.display = 'none';
+};
+
+function resetAirplaneUI() {
+    document.getElementById('flight-multiplier').innerText = 'x1.00';
+    document.getElementById('flight-multiplier').style.color = 'rgba(255,255,255,0.1)';
+    document.getElementById('p-plane').className = 'fas fa-space-shuttle player-plane';
+    document.getElementById('p-plane').style.left = '10px';
+    document.getElementById('p-plane').style.bottom = '15px';
+    document.getElementById('p-plane').style.display = 'block';
+    document.getElementById('p-boom').style.display = 'none';
+    document.getElementById('flight-bet').disabled = false;
+    document.getElementById('flight-bet').value = '';
+    const btn = document.getElementById('flight-action-btn');
+    btn.innerText = '[ ĐẶT CƯỢC & CẤT CÁNH ]';
+    btn.onclick = window.startFlight;
+    btn.style.borderColor = 'var(--neon-gold)';
+    btn.style.color = 'var(--neon-gold)';
+}
+
+window.startFlight = async () => {
+    if(isFlying) return;
+    const bet = parseInt(document.getElementById('flight-bet').value);
+    if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
+    const snap = await get(ref(db, `users/${uid}`));
+    const currentPP = Number(snap.val().pp) || 0;
+    if(currentPP < bet) return window.showResult("NGHÈO", "Bạn không đủ vốn!", false);
+
+    await update(ref(db, `users/${uid}`), { pp: currentPP - bet });
+    flightBetAmount = bet;
+    isFlying = true;
+
+    const e = 100 / (Math.random() * 100);
+    crashPoint = parseFloat(Math.max(1.00, Math.min(100.00, e)).toFixed(2));
+    if(Math.random() < 0.05) crashPoint = 1.00;
+
+    document.getElementById('flight-bet').disabled = true;
+    document.getElementById('p-plane').classList.add('flying');
+    const btn = document.getElementById('flight-action-btn');
+    btn.innerText = '[ NHẢY DÙ CHỐT LỜI! ]';
+    btn.style.borderColor = 'var(--neon-green)';
+    btn.style.color = 'var(--neon-green)';
+    btn.onclick = window.cashOutFlight;
+
+    currentMultiplier = 1.00;
+    let speed = 0.005;
+    let pLeft = 10;
+    let pBottom = 15;
+
+    flightInterval = setInterval(() => {
+        currentMultiplier += speed;
+        speed += 0.0002;
+        document.getElementById('flight-multiplier').innerText = `x${currentMultiplier.toFixed(2)}`;
+
+        pLeft += 0.5;
+        pBottom += 0.2;
+        if (pLeft > 80) pLeft = 80;
+        if (pBottom > 80) pBottom = 80;
+
+        const plane = document.getElementById('p-plane');
+        plane.style.left = pLeft + '%';
+        plane.style.bottom = pBottom + '%';
+
+        if(currentMultiplier >= crashPoint) {
+            clearInterval(flightInterval);
+            isFlying = false;
+            plane.classList.remove('flying');
+            plane.style.display = 'none';
+            const boom = document.getElementById('p-boom');
+            boom.style.left = pLeft + '%';
+            boom.style.bottom = pBottom + '%';
+            boom.style.display = 'block';
+
+            document.getElementById('flight-multiplier').style.color = 'var(--neon-red)';
+            btn.innerText = 'MÁY BAY ĐÃ NỔ!';
+            btn.onclick = null;
+            btn.style.borderColor = 'var(--neon-red)';
+            btn.style.color = 'var(--neon-red)';
+
+            setTimeout(() => {
+                window.showResult("CHÁY NỔ", `Máy bay nổ tung ở x${crashPoint.toFixed(2)}.\nMất trắng ${flightBetAmount.toLocaleString()} PP!`, false);
+                resetAirplaneUI();
+            }, 1500);
+        }
+    }, 50);
+};
+
+window.cashOutFlight = async () => {
+    if(!isFlying) return;
+    clearInterval(flightInterval);
+    isFlying = false;
+    const plane = document.getElementById('p-plane');
+    plane.classList.remove('flying');
+
+    const winAmount = Math.floor(flightBetAmount * currentMultiplier);
+    const snap = await get(ref(db, `users/${uid}`));
+    const currentPP = Number(snap.val().pp) || 0;
+    await update(ref(db, `users/${uid}`), { pp: currentPP + winAmount });
+
+    document.getElementById('flight-multiplier').style.color = 'var(--neon-gold)';
+    const btn = document.getElementById('flight-action-btn');
+    btn.innerText = `ĐÃ NHẢY DÙ X${currentMultiplier.toFixed(2)}`;
+    btn.onclick = null;
+    btn.style.borderColor = '#555';
+    btn.style.color = '#555';
+
+    setTimeout(() => {
+        window.showResult("SỐNG SÓT", `Nhảy dù an toàn tại x${currentMultiplier.toFixed(2)}.\nĂn ${(winAmount).toLocaleString()} PP!`, true);
+        resetAirplaneUI();
+    }, 1500);
+};
+
+
+// ==========================================
+// 💰 GOLD MARKET REALTIME (VIP PRO - FIXED LOGIC)
 // ==========================================
 let currentGoldPrice = 50000000;
 let goldChartObj = null;
@@ -417,7 +539,7 @@ function startGoldMarketLoop() {
         const snap = await get(ref(db, 'market/gold'));
         let market = snap.val();
         if (!market || !market.price) {
-            market = { price: 50000000, oldPrice: 50000000, high24h: 50000000, low24h: 50000000, volumeBuy: 0, volumeSell: 0, history: Array(20).fill(50000000), lastUpdate: 0 };
+            market = { price: 50000000, oldPrice: 50000000, high24h: 50000000, low24h: 50000000, volumeBuy: 0, volumeSell: 0, history: Array(20).fill(50000000), lastUpdate: 0, statusText: 'MARKET: NORMAL ⚪', statusColor: '#aaa' };
         }
         
         const now = Date.now();
@@ -425,11 +547,26 @@ function startGoldMarketLoop() {
             let oldPrice = market.price;
             let changePct = 0;
             const rand = Math.random();
+            let sText = 'MARKET: NORMAL ⚪';
+            let sColor = '#aaa';
             
-            if(rand < 0.05) changePct = (Math.random() * 0.04) + 0.02; // PUMP
-            else if(rand < 0.10) changePct = -((Math.random() * 0.04) + 0.02); // CRASH
-            else if(rand < 0.30) changePct = (Math.random() * 0.016) - 0.008; // Dao động mạnh
-            else changePct = (Math.random() * 0.004) - 0.002; // Sideway nhẹ
+            if(rand < 0.01) { // CRASH (1%)
+                changePct = -(Math.random() * 0.03 + 0.02);
+                sText = 'MARKET: CRASH 💀'; sColor = 'var(--neon-red)';
+            } else if(rand < 0.02) { // PUMP (1%)
+                changePct = (Math.random() * 0.02 + 0.02);
+                sText = 'MARKET: PUMP 🚀'; sColor = 'var(--neon-gold)';
+            } else if(rand < 0.10) { // DROP/BEARISH (8%)
+                changePct = -(Math.random() * 0.01 + 0.005);
+                sText = 'MARKET: BEARISH 🔴'; sColor = 'var(--neon-red)';
+            } else if(rand < 0.30) { // RISE/BULLISH (20%)
+                changePct = (Math.random() * 0.007 + 0.005);
+                sText = 'MARKET: BULLISH 🟢'; sColor = 'var(--neon-green)';
+            } else { // NORMAL/SIDEWAY (70%)
+                changePct = (Math.random() * 0.006 - 0.003);
+                sText = changePct >= 0 ? 'MARKET: SIDEWAY ↗️' : 'MARKET: SIDEWAY ↘️';
+                sColor = changePct >= 0 ? '#4ade80' : '#f87171';
+            }
             
             let newPrice = Math.floor(oldPrice * (1 + changePct));
             if(newPrice < 1000000) newPrice = 1000000;
@@ -448,6 +585,8 @@ function startGoldMarketLoop() {
                 low24h: low24h,
                 lastUpdate: now, 
                 history: history,
+                statusText: sText,
+                statusColor: sColor,
                 updateTimeString: new Date().toLocaleTimeString('vi-VN')
             });
         }
@@ -479,8 +618,8 @@ function listenGoldMarket() {
             
             const statusEl = document.getElementById('gold-market-status');
             if(statusEl) {
-                statusEl.innerHTML = isUp ? 'MARKET: BULLISH 🟢' : 'MARKET: BEARISH 🔴';
-                statusEl.style.color = isUp ? 'var(--neon-green)' : 'var(--neon-red)';
+                statusEl.innerHTML = market.statusText || (isUp ? 'MARKET: BULLISH 🟢' : 'MARKET: BEARISH 🔴');
+                statusEl.style.color = market.statusColor || (isUp ? 'var(--neon-green)' : 'var(--neon-red)');
             }
             
             document.getElementById('gold-high').innerText = (market.high24h || market.price).toLocaleString();
@@ -651,7 +790,7 @@ window.fillAllGold = async () => {
 };
 
 // ==========================================
-// 🚀 TRADING CRYPTO LIVE (GIỮ NGUYÊN)
+// 🚀 TRADING CRYPTO LIVE
 // ==========================================
 let cryptoInterval; let isCryptoTrading = false; let cMult = 1.00; let cCrash = 1.00; let cBet = 0;
 let cryptoData = []; let chartX = 0;
@@ -759,6 +898,95 @@ window.playPirate = (c) => executeBet("KHO BÁU", (b) => { const w=Math.floor(Ma
 window.playEgg = () => executeBet("ĐẬP TRỨNG", (b) => { if(Math.random()<0.7) return {payout:Math.floor(b*0.1), message:`Trứng nở ra vàng!\nLời ${(Math.floor(b*0.1)).toLocaleString()} PP.`, title:"THU HOẠCH", isWin:true}; return {payout:-b, message:`Trứng ung! Thối hoắc.\nMất ${b.toLocaleString()} PP!`, title:"THÚI QUẮC", isWin:false}; });
 window.playExactDice = () => executeBet("ĐOÁN XÚC XẮC", (b) => { let c=parseInt(prompt("Mặt (1-6):")); if(isNaN(c)||c<1||c>6) return null; const r=Math.floor(Math.random()*7)+1; if(c===r) return {payout:b*5, message:`Đổ ra mặt ${r}!\nĂn trọn ${(b*5).toLocaleString()} PP!`, title:"THẦN BÀI", isWin:true}; return {payout:-b, message:`Đổ ra mặt ${r}!\nTrượt rồi, mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playDragonTiger = (c) => executeBet("RỒNG HỔ", (b) => { const d=Math.floor(Math.random()*13)+1, t=Math.floor(Math.random()*13)+1; if(d===t) return {payout:-Math.floor(b*0.5), message:`Rồng ${d} - Hổ ${t}\nHòa nhau, nhà cái thu nửa tiền!`, title:"HÒA LỖ", isWin:false}; const w=d>t?'DRAGON':'TIGER'; if(c===w) return {payout:b, message:`Rồng ${d} - Hổ ${t}\nĐoán chuẩn! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Rồng ${d} - Hổ ${t}\nĐoán sai! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
+
+// ==========================================
+// 🎲 TÀI XỈU 3D (FIXED LOGIC)
+// ==========================================
+window.playTaiXiu = (choice) => {
+    const betStr = prompt(`Bạn chọn ${choice === 'TAI' ? 'TÀI' : 'XỈU'}.\nNhập số PP cược:`);
+    if(!betStr) return;
+    const bet = parseInt(betStr);
+    if(isNaN(bet) || bet <= 0) return alert("Số cược không hợp lệ!");
+    get(ref(db, `users/${uid}`)).then(snap => {
+        const currentPP = Number(snap.val().pp) || 0;
+        if(currentPP < bet) return alert("Bạn không đủ PP!");
+        txBet = bet;
+        txChoice = choice;
+        isTxRevealed = false;
+        document.getElementById('taixiu-modal').style.display = 'flex';
+        document.getElementById('taixiu-cup').style.display = 'block';
+        document.getElementById('taixiu-cup').style.transform = 'translate(0, 0)';
+        document.getElementById('tx-d1').className = 'fas fa-dice-one tx-dice red';
+        document.getElementById('tx-d2').className = 'fas fa-dice-one tx-dice black';
+        document.getElementById('tx-d3').className = 'fas fa-dice-one tx-dice red';
+    });
+};
+
+window.openTaiXiuInstant = async () => {
+    if (isTxRevealed) return;
+    isTxRevealed = true;
+    const snap = await get(ref(db, `users/${uid}`));
+    const currentPP = Number(snap.val().pp) || 0;
+    if(currentPP < txBet) {
+        document.getElementById('taixiu-modal').style.display = 'none';
+        return alert("Lỗi: Tài khoản không đủ tiền lúc mở bát!");
+    }
+
+    await update(ref(db, `users/${uid}`), { pp: currentPP - txBet });
+
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    const d3 = Math.floor(Math.random() * 6) + 1;
+    const total = d1 + d2 + d3;
+
+    const diceClasses = [ '', 'fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six' ];
+
+    document.getElementById('tx-d1').className = `fas ${diceClasses[d1]} tx-dice red`;
+    document.getElementById('tx-d2').className = `fas ${diceClasses[d2]} tx-dice black`;
+    document.getElementById('tx-d3').className = `fas ${diceClasses[d3]} tx-dice red`;
+
+    const cup = document.getElementById('taixiu-cup');
+    cup.classList.add('shake-anim');
+
+    setTimeout(async () => {
+        cup.classList.remove('shake-anim');
+        cup.style.display = 'none'; // Mở bát
+
+        const isTai = total >= 11;
+        const isWin = (txChoice === 'TAI' && isTai) || (txChoice === 'XIU' && !isTai);
+        const isBao = d1 === d2 && d2 === d3;
+
+        let payout = 0;
+        let msg = `Kết quả: ${d1} - ${d2} - ${d3} (Tổng: ${total})\n`;
+        let title = "";
+
+        if (isBao) {
+            payout = 0; 
+            msg += "BÃO!!! Nhà cái húp trọn mâm.\nBạn mất trắng!";
+            title = "BÃO CUỐN";
+        } else if (isWin) {
+            payout = txBet * 2;
+            msg += `Đoán đúng ${txChoice === 'TAI' ? 'TÀI' : 'XỈU'}!\nĂn ${(txBet).toLocaleString()} PP (Hoàn tiền + Lãi).`;
+            title = "THẮNG ĐẬM";
+        } else {
+            payout = 0;
+            msg += `Ra ${isTai ? 'TÀI' : 'XỈU'}.\nBạn mất ${txBet.toLocaleString()} PP!`;
+            title = "THUA SẠCH";
+        }
+
+        const freshSnap = await get(ref(db, `users/${uid}`));
+        const freshPP = Number(freshSnap.val().pp) || 0;
+        if (payout > 0) {
+            await update(ref(db, `users/${uid}`), { pp: freshPP + payout });
+        }
+
+        setTimeout(() => {
+            document.getElementById('taixiu-modal').style.display = 'none';
+            window.showResult(title, msg, isWin && !isBao);
+        }, 2000);
+
+    }, 1000);
+};
 
 // ==========================================
 // 🃏 TIẾN LÊN MIỀN NAM VIP (FULL LOGIC + ĐỒNG HỒ 30S)
