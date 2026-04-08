@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, get, onValue, update, remove, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, get, onValue, update, remove, set, onDisconnect, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = { apiKey: "AIzaSyCfrD1iS1yjfjuaPIKvGb-iWcirBg1lXJE", authDomain: "appsinhvien-24482.firebaseapp.com", databaseURL: "https://appsinhvien-24482-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "appsinhvien-24482" };
 const app = initializeApp(firebaseConfig); const db = getDatabase(app);
@@ -20,9 +20,29 @@ window.showResult = (title, message, isWin) => {
 
 function formatDate(dStr) { if(!dStr || dStr === 'Không có') return ''; const parts = dStr.split('-'); if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`; return dStr; }
 window.toggleMusic = () => { const audio = document.getElementById('bgMusic'), btn = document.getElementById('music-toggle'); if (audio.paused) { audio.play().catch(() => alert("Bấm vào màn hình trước khi bật nhạc!")); btn.innerHTML = '<i class="fas fa-volume-up"></i> [ TẮT NHẠC ]'; btn.style.color = 'var(--neon-gold)'; } else { audio.pause(); btn.innerHTML = '<i class="fas fa-music"></i> [ BẬT NHẠC ]'; btn.style.color = ''; } };
-window.switchTab = (tab) => { ['academic', 'casino', 'bank'].forEach(t => { if(document.getElementById(`nav-${t}`)) document.getElementById(`nav-${t}`).classList.remove('active'); if(document.getElementById(`tab-${t}`)) document.getElementById(`tab-${t}`).style.display = 'none'; }); if(document.getElementById(`nav-${tab}`)) document.getElementById(`nav-${tab}`).classList.add('active'); if(document.getElementById(`tab-${tab}`)) document.getElementById(`tab-${tab}`).style.display = 'grid'; };
+
+window.switchTab = (tab) => { 
+    ['academic', 'casino', 'bank', 'gold'].forEach(t => { 
+        if(document.getElementById(`nav-${t}`)) document.getElementById(`nav-${t}`).classList.remove('active'); 
+        if(document.getElementById(`tab-${t}`)) document.getElementById(`tab-${t}`).style.display = 'none'; 
+    }); 
+    if(document.getElementById(`nav-${tab}`)) document.getElementById(`nav-${tab}`).classList.add('active'); 
+    if(document.getElementById(`tab-${tab}`)) document.getElementById(`tab-${tab}`).style.display = 'grid'; 
+
+    // FIX LỖI CHART TRẮNG KHI CHUYỂN TAB
+    if(tab === 'gold' && goldChartObj) {
+        setTimeout(() => { goldChartObj.resize(); goldChartObj.update(); }, 150);
+    }
+};
+
 window.login = async () => { const u = document.getElementById('username').value.trim(), p = document.getElementById('password').value.trim(); const snap = await get(ref(db, `users/${u}`)); if (snap.exists() && snap.val().pass === p) { if(snap.val().locked) return alert("TÀI KHOẢN ĐÃ BỊ KHÓA!"); localStorage.setItem('uid', u); location.reload(); } else alert("SAI UID HOẶC MẬT KHẨU!"); };
-window.logout = () => { localStorage.removeItem('uid'); location.reload(); };
+window.logout = async () => { 
+    if(uid) { 
+        await remove(ref(db, `online/${uid}`)); 
+        await push(ref(db, `online_logs/${uid}`), { action: 'LOGOUT', time: new Date().toLocaleString('vi-VN'), timestamp: Date.now(), name: localStorage.getItem('uname') || uid }); 
+    }
+    localStorage.removeItem('uid'); localStorage.removeItem('uname'); location.reload(); 
+};
 function genClassOptions(sel, all = false) { let o = all ? '<option value="ALL">TẤT CẢ LỚP</option>' : ''; for(let y=1; y<=4; y++) ['A','B','C','D'].forEach(b => { const v=`Y${y}_${b}`; o+=`<option value="${v}" ${v===sel?'selected':''}>Lớp ${y}-${b}</option>`; }); return o; }
 
 const uid = localStorage.getItem('uid');
@@ -34,14 +54,33 @@ if (uid) {
 
 function loadSystem() {
     if(isSystemLoaded) return; isSystemLoaded = true;
+    
+    const connectedRef = ref(db, '.info/connected');
+    
     onValue(ref(db, `users/${uid}`), snap => {
         const u = snap.val(); if(!u) return;
+        localStorage.setItem('uname', u.name);
         document.getElementById('avatar-container').innerHTML = u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<i class="fas fa-user-ninja"></i>`;
         document.getElementById('display-name').innerHTML = u.role === 'TEACHER' ? `${u.name} <i class="fas fa-pen" onclick="changeTeacherName()" style="font-size:10px;cursor:pointer;"></i>` : u.name;
         document.getElementById('role-badge').innerText = u.role === 'TEACHER' ? 'FACULTY' : `LỚP ${u.class}`;
         if(document.getElementById('pvp-p1-avatar')) { document.getElementById('pvp-p1-avatar').src = u.avatar || 'https://i.pravatar.cc/150?u=my'; document.getElementById('pvp-p1-name').innerText = u.name; }
-        if(u.role === 'TEACHER') { document.getElementById('teacher-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'none'; document.getElementById('nav-bank').style.display = 'none'; document.getElementById('nav-casino').style.display = 'none'; } 
-        else { document.getElementById('student-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'flex'; document.getElementById('nav-bank').style.display = 'flex'; document.getElementById('nav-casino').style.display = 'flex'; document.getElementById('display-pp').innerText = (u.pp || 0).toLocaleString(); renderStudentGrades(u); }
+        if(u.role === 'TEACHER') { document.getElementById('teacher-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'none'; document.getElementById('nav-bank').style.display = 'none'; document.getElementById('nav-casino').style.display = 'none'; document.getElementById('nav-gold').style.display = 'none'; } 
+        else { document.getElementById('student-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'flex'; document.getElementById('nav-bank').style.display = 'flex'; document.getElementById('nav-casino').style.display = 'flex'; document.getElementById('nav-gold').style.display = 'flex'; document.getElementById('display-pp').innerText = (u.pp || 0).toLocaleString(); renderStudentGrades(u); updateMyGoldUI(u); }
+    });
+
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            const myOnlineRef = ref(db, `online/${uid}`);
+            const uname = localStorage.getItem('uname') || 'Sinh Viên';
+            set(myOnlineRef, { name: uname, time: Date.now() });
+            onDisconnect(myOnlineRef).remove();
+            
+            if (!window.hasLoggedLogin) {
+                window.hasLoggedLogin = true;
+                push(ref(db, `online_logs/${uid}`), { action: 'LOGIN', time: new Date().toLocaleString('vi-VN'), timestamp: Date.now(), name: uname });
+            }
+            onDisconnect(push(ref(db, `online_logs/${uid}`))).set({ action: 'LOGOUT', time: 'Mất kết nối', timestamp: {'.sv': 'timestamp'}, name: uname });
+        }
     });
 
     onValue(ref(db, 'classes'), snap => {
@@ -118,6 +157,30 @@ function loadSystem() {
         if(document.getElementById('admin-transactions')) document.getElementById('admin-transactions').innerHTML = hAdmin || `<tr><td colspan="5" style="text-align:center; color:#888;">Chưa có giao dịch nào</td></tr>`;
         if(document.getElementById('student-transactions')) document.getElementById('student-transactions').innerHTML = hStudent || `<tr><td colspan="5" style="text-align:center; color:#888;">Chưa có giao dịch nào</td></tr>`;
     });
+
+    onValue(ref(db, 'online_logs'), snap => {
+        const logs = snap.val() || {}; let arr = [];
+        for(let userId in logs) {
+            for(let key in logs[userId]) {
+                arr.push({ uid: userId, ...logs[userId][key] });
+            }
+        }
+        arr.sort((a,b) => {
+            let tA = a.timestamp; let tB = b.timestamp;
+            if(typeof tA === 'object') tA = Date.now();
+            if(typeof tB === 'object') tB = Date.now();
+            return tB - tA;
+        });
+        let h = "";
+        arr.slice(0, 100).forEach(log => {
+            const clss = log.action === 'LOGIN' ? 'text-green' : 'text-red';
+            h += `<tr><td>${log.uid}</td><td>${log.name || 'Sinh viên'}</td><td class="${clss}" style="font-weight:bold;">${log.action}</td><td>${log.time}</td></tr>`;
+        });
+        if(document.getElementById('admin-online-logs')) document.getElementById('admin-online-logs').innerHTML = h || `<tr><td colspan="4" style="text-align:center; color:#888;">Chưa có dữ liệu</td></tr>`;
+    });
+
+    startGoldMarketLoop();
+    listenGoldMarket();
 }
 window.loadAdmin = () => { /* Auto */ };
 
@@ -206,7 +269,6 @@ window.openFootballGame = () => {
     document.getElementById('fb-bet').disabled = false; 
     document.getElementById('fb-actions').style.display = 'flex'; 
     
-    // Set vị trí 12 cầu thủ (Đội hình 1-2-2-1 thu nhỏ)
     const resetPos = {
         'p-xanh-gk': [5, 50], 'p-xanh-1': [20, 25], 'p-xanh-2': [20, 75], 'p-xanh-3': [40, 30], 'p-xanh-4': [40, 70], 'p-xanh-5': [50, 50],
         'p-do-gk': [95, 50], 'p-do-1': [80, 25], 'p-do-2': [80, 75], 'p-do-3': [60, 30], 'p-do-4': [60, 70], 'p-do-5': [50, 50]
@@ -229,7 +291,6 @@ window.startFootballMatch = async (choice) => {
     let time = 0; let scoreXanh = 0; let scoreDo = 0; 
     const ball = document.getElementById('fb-ball'); const commentary = document.getElementById('fb-commentary');
     
-    // Khởi tạo cầu thủ
     const players = [
         { id: 'p-xanh-gk', team: 'XANH', role: 'gk', base: [5, 50], name: 'Thủ môn Xanh' },
         { id: 'p-xanh-1', team: 'XANH', role: 'def', base: [20, 25], name: 'Hậu vệ trái Xanh' },
@@ -249,33 +310,29 @@ window.startFootballMatch = async (choice) => {
     let ballCarrier = players.find(p => p.id === 'p-xanh-5');
     let isGoalAnim = false;
 
-    // Chu kì chạy 1 giây (1000ms), do transition CSS là 1s nên di chuyển sẽ cực kỳ lướt và êm
     const matchInterval = setInterval(() => {
         if(isGoalAnim) return; 
         time++; document.getElementById('fb-time').innerText = `Phút: ${time}'`;
 
         let bX = parseFloat(ball.style.left); let bY = parseFloat(ball.style.top);
 
-        // 1. CHUYỂN ĐỘNG CỦA 12 CẦU THỦ
         players.forEach(p => {
             const el = document.getElementById(p.id);
             if(p.role === 'gk') {
-                el.style.top = (40 + Math.random()*20) + '%'; // Thủ môn nhích lên xuống
+                el.style.top = (40 + Math.random()*20) + '%';
             } else {
                 if(p === ballCarrier) {
-                    // Người cầm bóng lao về gôn địch
                     let targetX = p.team === 'XANH' ? bX + 15 : bX - 15;
                     let targetY = bY + (Math.random()*20 - 10);
                     targetX = Math.max(10, Math.min(90, targetX)); targetY = Math.max(10, Math.min(90, targetY));
                     el.style.left = targetX + '%'; el.style.top = targetY + '%';
                 } else {
-                    // Người không cầm bóng chạy chỗ
                     let range = 15;
                     let targetX = p.base[0] + (Math.random()*range*2 - range);
                     let targetY = p.base[1] + (Math.random()*range*2 - range);
                     
-                    if(p.team === ballCarrier.team && p.role === 'att') { targetX = p.team === 'XANH' ? targetX + 15 : targetX - 15; } // Tiền đạo dâng cao
-                    if(p.team !== ballCarrier.team && Math.random() < 0.6) { targetX = (targetX + bX) / 2; targetY = (targetY + bY) / 2; } // Hậu vệ áp sát bóng
+                    if(p.team === ballCarrier.team && p.role === 'att') { targetX = p.team === 'XANH' ? targetX + 15 : targetX - 15; }
+                    if(p.team !== ballCarrier.team && Math.random() < 0.6) { targetX = (targetX + bX) / 2; targetY = (targetY + bY) / 2; }
 
                     targetX = Math.max(5, Math.min(95, targetX)); targetY = Math.max(5, Math.min(95, targetY));
                     el.style.left = targetX + '%'; el.style.top = targetY + '%';
@@ -283,10 +340,9 @@ window.startFootballMatch = async (choice) => {
             }
         });
 
-        // 2. DIỄN BIẾN TRẬN ĐẤU
         const action = Math.random();
-        if (action < 0.2) { // 20% SÚT BÓNG
-            const isGoal = Math.random() < 0.3; // Tỉ lệ vào 30%
+        if (action < 0.2) { 
+            const isGoal = Math.random() < 0.3; 
             isGoalAnim = true;
             if(isGoal) {
                 if(ballCarrier.team === 'XANH') {
@@ -300,34 +356,32 @@ window.startFootballMatch = async (choice) => {
 
                 setTimeout(() => {
                     isGoalAnim = false;
-                    ballCarrier = players.find(p => p.role === 'att' && p.team !== ballCarrier.team); // Đội kia giao bóng
+                    ballCarrier = players.find(p => p.role === 'att' && p.team !== ballCarrier.team);
                     ball.style.left = '50%'; ball.style.top = '50%';
                 }, 2000);
             } else {
                 if(ballCarrier.team === 'XANH') { ball.style.left = '95%'; ball.style.top = (Math.random() < 0.5 ? '20%' : '80%'); }
                 else { ball.style.left = '5%'; ball.style.top = (Math.random() < 0.5 ? '20%' : '80%'); }
                 commentary.innerText = `Không vào! Thủ môn đã cản phá cú sút của ${ballCarrier.name}!`;
-                setTimeout(() => { isGoalAnim = false; ballCarrier = players.find(p => p.role === 'gk' && p.team !== ballCarrier.team); }, 1000); // Thủ môn bắt bóng
+                setTimeout(() => { isGoalAnim = false; ballCarrier = players.find(p => p.role === 'gk' && p.team !== ballCarrier.team); }, 1000);
             }
-        } else if (action < 0.5) { // 30% CHUYỀN
+        } else if (action < 0.5) { 
             const teammates = players.filter(p => p.team === ballCarrier.team && p.role !== 'gk' && p !== ballCarrier);
             ballCarrier = teammates[Math.floor(Math.random() * teammates.length)];
             commentary.innerText = `Đường chuyền dài vượt tuyến cực đẹp!`;
-        } else if (action < 0.8) { // 30% CƯỚP BÓNG
+        } else if (action < 0.8) { 
             const enemies = players.filter(p => p.team !== ballCarrier.team && p.role !== 'gk');
             ballCarrier = enemies[Math.floor(Math.random() * enemies.length)];
             commentary.innerText = `Bóng đã bị ${ballCarrier.name} cướp được! Phản công nhanh!`;
-        } else { // 20% RÊ BÓNG
+        } else { 
             commentary.innerText = `${ballCarrier.name} đang dùng kỹ thuật rê bóng lắt léo!`;
         }
 
-        // Bóng dính vô chân người cầm bóng
         if(!isGoalAnim) {
             ball.style.left = document.getElementById(ballCarrier.id).style.left;
             ball.style.top = document.getElementById(ballCarrier.id).style.top;
         }
 
-        // 3. KẾT THÚC TRẬN ĐẤU (Sau 60s)
         if(time >= 60) {
             clearInterval(matchInterval);
             ball.style.left = '50%'; ball.style.top = '50%';
@@ -351,87 +405,253 @@ window.startFootballMatch = async (choice) => {
     }, 1000); 
 };
 
-
 // ==========================================
-// 🎲 TÀI XỈU 3D NẶN BÁT
+// 💰 GOLD MARKET REALTIME (VIP PRO)
 // ==========================================
-window.playTaiXiu = async (choice) => {
-    let bet = prompt(`[ TÀI XỈU 3D ] - Đặt cửa ${choice === 'TAI' ? 'TÀI' : 'XỈU'}\nNhập số PP cược:`); if(!bet) return; bet = parseInt(bet); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
-    const snap = await get(ref(db, `users/${uid}`)); const u = snap.val(); const currentPP = Number(u.pp) || 0;
-    if(currentPP < bet) return window.showResult("NGHÈO", `Không đủ cược!`, false);
-    await update(ref(db, `users/${uid}`), { pp: currentPP - bet });
-    txBet = bet; txChoice = choice; isTxRevealed = false;
+let currentGoldPrice = 50000000;
+let goldChartObj = null;
+window.currentGoldSellPrice = 49900000;
 
-    if(Math.random() < 0.08) { const b = Math.floor(Math.random()*6)+1; txResult = [b, b, b]; } else { txResult = [Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1]; }
-    const dClasses = ['', 'fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six'];
-    document.getElementById('tx-d1').className = `fas ${dClasses[txResult[0]]} tx-dice ${txResult[0]%2===0?'black':'red'}`; document.getElementById('tx-d2').className = `fas ${dClasses[txResult[1]]} tx-dice ${txResult[1]%2===0?'black':'red'}`; document.getElementById('tx-d3').className = `fas ${dClasses[txResult[2]]} tx-dice ${txResult[2]%2===0?'black':'red'}`;
-
-    const cup = document.getElementById('taixiu-cup'); cup.style.transform = 'translate(0px, 0px)'; cup.style.transition = 'none'; cup.classList.add('shake-anim'); document.getElementById('taixiu-modal').style.display = 'flex';
-    setTimeout(() => { cup.classList.remove('shake-anim'); initDrag(cup); }, 1000); 
-};
-function initDrag(el) {
-    let isDragging = false; let startX, startY;
-    const onDown = (e) => { if(isTxRevealed) return; isDragging = true; startX = e.clientX || e.touches[0].clientX; startY = e.clientY || e.touches[0].clientY; };
-    const onMove = (e) => { if(!isDragging || isTxRevealed) return; let dx = (e.clientX || e.touches[0].clientX) - startX; let dy = (e.clientY || e.touches[0].clientY) - startY; el.style.transform = `translate(${dx}px, ${dy}px)`; if(Math.abs(dx) > 120 || Math.abs(dy) > 120) { isDragging = false; window.openTaiXiuInstant(); } };
-    const onUp = () => { isDragging = false; };
-    el.onmousedown = onDown; el.ontouchstart = onDown; document.onmousemove = onMove; document.ontouchmove = onMove; document.onmouseup = onUp; document.ontouchend = onUp;
-}
-window.openTaiXiuInstant = async () => {
-    if(isTxRevealed) return; isTxRevealed = true;
-    const cup = document.getElementById('taixiu-cup'); cup.style.transition = 'transform 0.5s ease-out'; cup.style.transform = 'translate(0px, -350px)';
-    setTimeout(async () => {
-        document.getElementById('taixiu-modal').style.display = 'none';
-        const sum = txResult[0] + txResult[1] + txResult[2]; const isBao = (txResult[0] === txResult[1] && txResult[1] === txResult[2]); const r = (sum >= 11 && sum <= 17) ? 'TAI' : 'XIU';
-        const freshSnap = await get(ref(db, `users/${uid}`)); const freshPP = Number(freshSnap.val().pp) || 0;
-        if (isBao) window.showResult("BÃO!", `Xúc xắc: ${txResult.join(' - ')}.\nNhà cái húp trọn bàn! Mất ${txBet.toLocaleString()} PP.`, false); 
-        else if (txChoice === r) { await update(ref(db, `users/${uid}`), { pp: freshPP + (txBet * 2) }); window.showResult("THẮNG ĐẬM", `Xúc xắc: ${txResult.join(' - ')} (Tổng ${sum} - ${r==='TAI'?'TÀI':'XỈU'}).\nĂn ${(txBet*2).toLocaleString()} PP!`, true); } 
-        else window.showResult("THUA RỒI", `Xúc xắc: ${txResult.join(' - ')} (Tổng ${sum} - ${r==='TAI'?'TÀI':'XỈU'}).\nMất ${txBet.toLocaleString()} PP!`, false); 
-    }, 1500); 
-};
-
-// ==========================================
-// 🚀 GAME MÁY BAY KHÔNG CHIẾN 2.0 (CRASH)
-// ==========================================
-window.openAirplaneGame = () => { if(isFlying) return; document.getElementById('airplane-modal').style.display = 'flex'; resetFlightUI(); };
-window.closeAirplaneGame = () => { if(isFlying) return alert("Tàu đang bay, không thể thoát!"); document.getElementById('airplane-modal').style.display = 'none'; };
-function resetFlightUI() {
-    document.getElementById('flight-multiplier').innerText = 'x0.00'; document.getElementById('flight-multiplier').style.color = 'rgba(255,255,255,0.1)';
-    const pPlane = document.getElementById('p-plane'); pPlane.style.display = 'block'; pPlane.classList.remove('flying'); pPlane.style.transition = 'none'; pPlane.style.left = '10px'; pPlane.style.bottom = '15px'; pPlane.style.transform = 'rotate(0deg)';
-    document.getElementById('p-runway').style.transform = 'translateX(0)'; document.getElementById('e-plane').style.display = 'none'; document.getElementById('e-plane').style.right = '-60px'; document.getElementById('e-laser').style.display = 'none'; document.getElementById('p-boom').style.display = 'none';
-    const btn = document.getElementById('flight-action-btn'); btn.innerText = '[ ĐẶT CƯỢC & CẤT CÁNH ]'; btn.onclick = window.startFlight; btn.style.borderColor = 'var(--neon-gold)'; btn.style.color = 'var(--neon-gold)';
-    document.getElementById('flight-bet').disabled = false; document.getElementById('flight-bet').value = '';
-}
-window.startFlight = async () => {
-    if(isFlying) return; const bet = parseInt(document.getElementById('flight-bet').value); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
-    const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; if(currentPP < bet) return window.showResult("NGHÈO", "Bạn không đủ PP để cất cánh!", false);
-    await update(ref(db, `users/${uid}`), { pp: currentPP - bet }); flightBetAmount = bet; isFlying = true;
-    const e = 100 / (Math.random() * 100); crashPoint = parseFloat(Math.max(1.00, Math.min(100.00, e)).toFixed(2)); if(Math.random() < 0.05) crashPoint = 1.00;
-    document.getElementById('flight-bet').disabled = true; const btn = document.getElementById('flight-action-btn'); btn.innerText = '[ BẤM ĐỂ CHỐT LỜI! ]'; btn.style.borderColor = 'var(--neon-green)'; btn.style.color = 'var(--neon-green)'; btn.onclick = window.cashOutFlight;
-    currentMultiplier = 0.00; let speed = 0.005; pX = 10; pY = 15; let runwayOffset = 0; const pPlane = document.getElementById('p-plane'); pPlane.classList.add('flying');
-    flightInterval = setInterval(() => {
-        if (currentMultiplier < 1.00) { currentMultiplier += 0.02; pX += 0.5; pPlane.style.left = `${pX}px`; document.getElementById('flight-multiplier').innerText = `x${currentMultiplier.toFixed(2)}`; return; }
-        document.getElementById('flight-multiplier').style.color = 'var(--neon-blue)'; currentMultiplier += speed; speed += 0.0003; document.getElementById('flight-multiplier').innerText = `x${currentMultiplier.toFixed(2)}`;
-        runwayOffset -= 5; document.getElementById('p-runway').style.transform = `translateX(${runwayOffset}px)`;
-        if(pY < 150) pY += 1; pPlane.style.bottom = `${pY + Math.sin(currentMultiplier * 15) * 3}px`; pPlane.style.transform = `rotate(15deg)`;
-        if(currentMultiplier >= crashPoint) { endFlightCrash(); }
-    }, 40);
-};
-window.cashOutFlight = async () => {
-    if(!isFlying) return; clearInterval(flightInterval); isFlying = false;
-    const winAmount = Math.floor(flightBetAmount * currentMultiplier); const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; await update(ref(db, `users/${uid}`), { pp: currentPP + winAmount });
-    document.getElementById('flight-multiplier').style.color = 'var(--neon-green)'; const btn = document.getElementById('flight-action-btn'); btn.innerText = 'ĐÃ CHỐT LỜI X' + currentMultiplier.toFixed(2); btn.onclick = null; btn.style.borderColor = '#555'; btn.style.color = '#555';
-    const plane = document.getElementById('p-plane'); plane.style.transition = 'left 0.8s ease-in, bottom 0.8s ease-in'; plane.style.left = '120%'; plane.style.bottom = '300px';
-    setTimeout(() => { window.showResult("CHỐT LỜI ĐỈNH CAO", `Bạn đã nhảy dù an toàn ở hệ số x${currentMultiplier.toFixed(2)}.\nThắng ${(winAmount).toLocaleString()} PP!`, true); resetFlightUI(); }, 1000);
-};
-function endFlightCrash() {
-    clearInterval(flightInterval); isFlying = false;
-    document.getElementById('flight-multiplier').style.color = 'var(--neon-red)'; const btn = document.getElementById('flight-action-btn'); btn.innerText = 'TÀU ĐÃ BỊ BẮN HẠ!'; btn.onclick = null; btn.style.borderColor = 'var(--neon-red)'; btn.style.color = 'var(--neon-red)';
-    const ePlane = document.getElementById('e-plane'), pPlane = document.getElementById('p-plane'); ePlane.style.display = 'block'; setTimeout(() => { ePlane.style.right = '20px'; }, 50);
-    setTimeout(() => { const laser = document.getElementById('e-laser'); laser.style.display = 'block'; laser.style.right = '70px'; laser.style.top = '40%'; laser.style.width = '100%'; setTimeout(() => { laser.style.display = 'none'; pPlane.style.display = 'none'; const boom = document.getElementById('p-boom'); boom.style.display = 'block'; boom.style.left = pPlane.style.left; boom.style.bottom = pPlane.style.bottom; setTimeout(() => { window.showResult("BỊ BẮN HẠ!", `Phi cơ địch bắn nổ tàu bạn tại x${crashPoint.toFixed(2)}.\nMất trắng ${flightBetAmount.toLocaleString()} PP!`, false); resetFlightUI(); }, 1200); }, 150); }, 400);
+function startGoldMarketLoop() {
+    setInterval(async () => {
+        const snap = await get(ref(db, 'market/gold'));
+        let market = snap.val();
+        if (!market || !market.price) {
+            market = { price: 50000000, oldPrice: 50000000, high24h: 50000000, low24h: 50000000, volumeBuy: 0, volumeSell: 0, history: Array(20).fill(50000000), lastUpdate: 0 };
+        }
+        
+        const now = Date.now();
+        if (now - market.lastUpdate > 60000) {
+            let oldPrice = market.price;
+            let changePct = 0;
+            const rand = Math.random();
+            
+            if(rand < 0.05) changePct = (Math.random() * 0.04) + 0.02; // PUMP
+            else if(rand < 0.10) changePct = -((Math.random() * 0.04) + 0.02); // CRASH
+            else if(rand < 0.30) changePct = (Math.random() * 0.016) - 0.008; // Dao động mạnh
+            else changePct = (Math.random() * 0.004) - 0.002; // Sideway nhẹ
+            
+            let newPrice = Math.floor(oldPrice * (1 + changePct));
+            if(newPrice < 1000000) newPrice = 1000000;
+            
+            let history = market.history || Array(20).fill(oldPrice);
+            history.push(newPrice);
+            if(history.length > 20) history.shift();
+            
+            let high24h = Math.max(market.high24h || newPrice, newPrice);
+            let low24h = Math.min(market.low24h || newPrice, newPrice);
+            
+            await update(ref(db, 'market/gold'), { 
+                price: newPrice, 
+                oldPrice: oldPrice, 
+                high24h: high24h,
+                low24h: low24h,
+                lastUpdate: now, 
+                history: history,
+                updateTimeString: new Date().toLocaleTimeString('vi-VN')
+            });
+        }
+    }, 5000); 
 }
 
+function listenGoldMarket() {
+    onValue(ref(db, 'market/gold'), async (snap) => {
+        const market = snap.val();
+        if (!market) return;
+        
+        currentGoldPrice = market.price;
+        const sellPrice = Math.floor(market.price * 0.995); // Lệch 0.5%
+        window.currentGoldSellPrice = sellPrice;
+        
+        const change = market.price - (market.oldPrice || market.price);
+        const isUp = change >= 0;
+        const changePct = ((change / (market.oldPrice || market.price)) * 100).toFixed(2);
+        
+        const priceEl = document.getElementById('gold-current-price');
+        if(priceEl) {
+            priceEl.innerHTML = `MUA: ${market.price.toLocaleString()} <span style="font-size:16px;color:#aaa">PP</span> <br><span style="font-size:24px;color:var(--neon-red)">BÁN: ${sellPrice.toLocaleString()} PP</span>`;
+            
+            const changeStr = (isUp ? '↑ +' : '↓ ') + change.toLocaleString() + ` (${isUp?'+':''}${Math.abs(changePct)}%)`;
+            document.getElementById('gold-price-change').innerText = changeStr;
+            document.getElementById('gold-price-change').style.color = isUp ? 'var(--neon-green)' : 'var(--neon-red)';
+            
+            document.getElementById('gold-time-update').innerText = `⏱ Cập nhật: ${market.updateTimeString || '--:--:--'} (Chu kỳ 60s)`;
+            
+            const statusEl = document.getElementById('gold-market-status');
+            if(statusEl) {
+                statusEl.innerHTML = isUp ? 'MARKET: BULLISH 🟢' : 'MARKET: BEARISH 🔴';
+                statusEl.style.color = isUp ? 'var(--neon-green)' : 'var(--neon-red)';
+            }
+            
+            document.getElementById('gold-high').innerText = (market.high24h || market.price).toLocaleString();
+            document.getElementById('gold-low').innerText = (market.low24h || market.price).toLocaleString();
+            document.getElementById('gold-vol-buy').innerText = (market.volumeBuy || 0).toLocaleString();
+            document.getElementById('gold-vol-sell').innerText = (market.volumeSell || 0).toLocaleString();
+            
+            renderGoldChart(market.history || [], isUp ? '#00ff80' : '#ff003c');
+        }
+
+        const uSnap = await get(ref(db, `users/${uid}`));
+        const u = uSnap.val();
+        if(u) updateMyGoldUI(u);
+    });
+
+    onValue(ref(db, 'online'), snap => {
+        const onlines = snap.val() || {};
+        const count = Object.keys(onlines).length;
+        if(document.getElementById('online-count-badge')) {
+            document.getElementById('online-count-badge').innerHTML = `🟢 Online: ${count} người`;
+        }
+    });
+
+    onValue(ref(db, 'users'), snap => {
+        const users = snap.val() || {};
+        let traders = [];
+        for(let k in users) {
+            if(users[k].gold_stats && users[k].gold_stats.totalProfit) {
+                traders.push({ name: users[k].name, profit: users[k].gold_stats.totalProfit });
+            }
+        }
+        traders.sort((a,b) => b.profit - a.profit);
+        let html = '';
+        traders.slice(0,10).forEach(t => {
+            const clss = t.profit >= 0 ? 'text-green' : 'text-red';
+            html += `<tr><td>${t.name}</td><td class="${clss}">${t.profit > 0 ? '+':''}${t.profit.toLocaleString()}</td></tr>`;
+        });
+        if(document.getElementById('top-gold-traders')) {
+            document.getElementById('top-gold-traders').innerHTML = html || `<tr><td colspan="2" style="text-align:center; color:#888;">Chưa có dữ liệu</td></tr>`;
+        }
+    });
+}
+
+window.goldChangeTimeframe = (tf) => {
+    ['1m','5m','15m','ALL'].forEach(t => {
+        const b = document.getElementById(`gold-tf-${t}`);
+        if(b) { b.style.color = (t===tf) ? '#fff' : '#555'; b.style.borderColor = (t===tf) ? 'var(--neon-gold)' : '#333'; }
+    });
+};
+
+function renderGoldChart(history, color) {
+    const canvas = document.getElementById('goldRealtimeChart');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if(goldChartObj) {
+        goldChartObj.data.labels = Array(history.length).fill('');
+        goldChartObj.data.datasets[0].data = history;
+        goldChartObj.data.datasets[0].borderColor = color;
+        goldChartObj.update();
+    } else {
+        goldChartObj = new Chart(ctx, {
+            type: 'line',
+            data: { labels: Array(history.length).fill(''), datasets: [{ label: 'Gold Price', data: history, borderColor: color, borderWidth: 2, tension: 0.2, pointRadius: 0 }] },
+            options: { animation: false, scales: { x: { display: false }, y: { position: 'right', grid: { color: '#222' } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false }
+        });
+    }
+}
+
+function updateMyGoldUI(u) {
+    if(!document.getElementById('gold-my-amount')) return;
+    if (u.gold && u.gold.amount > 0) {
+        document.getElementById('gold-my-amount').innerText = u.gold.amount.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' GOLD';
+        document.getElementById('gold-my-avg').innerText = Math.floor(u.gold.avgPrice).toLocaleString() + ' PP';
+        
+        const currentVal = u.gold.amount * window.currentGoldSellPrice;
+        const invested = u.gold.amount * u.gold.avgPrice;
+        const pnl = Math.floor(currentVal - invested);
+        const pnlPct = (pnl / invested) * 100;
+        
+        const pnlEl = document.getElementById('gold-my-pnL');
+        pnlEl.innerText = (pnl >= 0 ? '+' : '') + pnl.toLocaleString() + ` PP (${pnlPct >= 0 ? '+' : ''}${Math.abs(pnlPct).toFixed(2)}%)`;
+        pnlEl.style.color = pnl >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
+        pnlEl.style.textShadow = pnl >= 0 ? '0 0 10px var(--neon-green)' : '0 0 10px var(--neon-red)';
+    } else {
+        document.getElementById('gold-my-amount').innerText = '0.0000 GOLD';
+        document.getElementById('gold-my-avg').innerText = '0 PP';
+        document.getElementById('gold-my-pnL').innerText = '0 PP';
+        document.getElementById('gold-my-pnL').style.color = '#fff';
+        document.getElementById('gold-my-pnL').style.textShadow = 'none';
+    }
+}
+
+window.buyGold = async () => {
+    const goldAmtStr = document.getElementById('gold-buy-amount').value;
+    const goldAmt = parseFloat(goldAmtStr);
+    if (isNaN(goldAmt) || goldAmt <= 0) return window.showResult("LỖI", "Số lượng Vàng không hợp lệ!", false);
+    
+    const uSnap = await get(ref(db, `users/${uid}`));
+    const u = uSnap.val();
+    const currentPP = Number(u.pp) || 0;
+    
+    const ppRequired = Math.floor(goldAmt * currentGoldPrice);
+    if (currentPP < ppRequired) return window.showResult("NGHÈO", `Bạn cần ${ppRequired.toLocaleString()} PP để mua ${goldAmt} GOLD!`, false);
+
+    const mSnap = await get(ref(db, 'market/gold'));
+    const market = mSnap.val();
+    if(!market) return;
+
+    const currentMyGold = u.gold || { amount: 0, avgPrice: 0 };
+    const totalValueBefore = currentMyGold.amount * currentMyGold.avgPrice;
+    const totalValueAfter = totalValueBefore + ppRequired;
+    const newAmount = currentMyGold.amount + goldAmt;
+    const newAvgPrice = totalValueAfter / newAmount;
+
+    await update(ref(db, `users/${uid}`), { pp: currentPP - ppRequired, gold: { amount: newAmount, avgPrice: newAvgPrice } });
+    
+    await update(ref(db, 'market/gold'), { volumeBuy: (market.volumeBuy || 0) + ppRequired });
+
+    document.getElementById('gold-buy-amount').value = '';
+    window.showResult("MUA VÀNG", `Đã mua thành công ${goldAmt.toLocaleString(undefined, {maximumFractionDigits: 4})} GOLD\nTổng chi phí: ${ppRequired.toLocaleString()} PP\nGiá mua: ${currentGoldPrice.toLocaleString()} PP/GOLD`, true);
+};
+
+window.sellGold = async () => {
+    const goldAmtStr = document.getElementById('gold-sell-amount').value;
+    const goldAmt = parseFloat(goldAmtStr);
+    if (isNaN(goldAmt) || goldAmt <= 0) return window.showResult("LỖI", "Số lượng Vàng không hợp lệ!", false);
+
+    const uSnap = await get(ref(db, `users/${uid}`));
+    const u = uSnap.val();
+    
+    if (!u.gold || u.gold.amount < goldAmt) {
+        window.showResult("LỖI", `Bạn chỉ đang giữ ${u.gold ? u.gold.amount.toLocaleString(undefined, {maximumFractionDigits: 4}) : 0} GOLD!`, false);
+        return;
+    }
+
+    const sellValue = Math.floor(goldAmt * window.currentGoldSellPrice);
+    const profit = sellValue - Math.floor(goldAmt * u.gold.avgPrice);
+    const currentPP = Number(u.pp) || 0;
+
+    const newAmount = u.gold.amount - goldAmt;
+    
+    if (newAmount > 0.000001) {
+        await update(ref(db, `users/${uid}`), { pp: currentPP + sellValue, gold: { amount: newAmount, avgPrice: u.gold.avgPrice } });
+    } else {
+        await update(ref(db, `users/${uid}`), { pp: currentPP + sellValue });
+        await remove(ref(db, `users/${uid}/gold`));
+    }
+
+    const currentTotalProfit = (u.gold_stats && u.gold_stats.totalProfit) ? u.gold_stats.totalProfit : 0;
+    await update(ref(db, `users/${uid}/gold_stats`), { totalProfit: currentTotalProfit + profit });
+
+    const mSnap = await get(ref(db, 'market/gold'));
+    await update(ref(db, 'market/gold'), { volumeSell: (mSnap.val().volumeSell || 0) + sellValue });
+
+    document.getElementById('gold-sell-amount').value = '';
+    const msg = `BÁN RA: ${goldAmt.toLocaleString(undefined, {maximumFractionDigits: 4})} GOLD\nThu về: ${sellValue.toLocaleString()} PP\nLãi/Lỗ: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()} PP!`;
+    window.showResult("BÁN VÀNG", msg, profit >= 0);
+};
+
+window.fillAllGold = async () => {
+    const uSnap = await get(ref(db, `users/${uid}`));
+    const u = uSnap.val();
+    if (u && u.gold && u.gold.amount > 0) {
+        document.getElementById('gold-sell-amount').value = u.gold.amount;
+    } else {
+        alert("Bạn không có Vàng để bán!");
+    }
+};
+
 // ==========================================
-// 📈 TRADING CRYPTO LIVE (CANVAS)
+// 🚀 TRADING CRYPTO LIVE (GIỮ NGUYÊN)
 // ==========================================
 let cryptoInterval; let isCryptoTrading = false; let cMult = 1.00; let cCrash = 1.00; let cBet = 0;
 let cryptoData = []; let chartX = 0;
@@ -511,7 +731,6 @@ window.playAuction = () => executeBet("ĐẤU GIÁ RƯƠNG", async (bet) => { co
 window.playSlot = () => executeBet("SLOT", (b) => { const s=['🍒','🍋','🔔','💎','🍉','💀','💩','🎱']; const r1=s[Math.floor(Math.random()*8)], r2=s[Math.floor(Math.random()*8)], r3=s[Math.floor(Math.random()*8)], res=`[ ${r1} | ${r2} | ${r3} ]`; if(r1===r2&&r2===r3) return {payout:b*10, message:`${res}\nNỔ HŨ X10! Trúng ${(b*10).toLocaleString()} PP!`, title:"JACKPOT", isWin:true}; if(r1===r2||r2===r3||r1===r3) return {payout:b, message:`${res}\nTRÚNG CẶP! X2 Tài sản!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`${res}\nTRẬT LẤT! Mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playCocktail = () => executeBet("COCKTAIL ĐỘC", (b) => { const p = Math.floor(Math.random()*6); if(p===0 || p===1) return {payout:-b, message:`LY CÓ ĐỘC! (Tỉ lệ chết 33%)\nMất sạch ${b.toLocaleString()} PP!`, title:"TỬ VONG", isWin:false}; return {payout:Math.floor(b*0.2), message:`An toàn! Lời ${(Math.floor(b*0.2)).toLocaleString()} PP!`, title:"NGON MIỆNG", isWin:true}; });
 window.playDarts = () => executeBet("PHI TIÊU", (b) => { const s = Math.floor(Math.random()*100)+1; if(s>96) return {payout:b*4, message:`Hồng tâm (${s}đ)! Trúng ${(b*4).toLocaleString()} PP!`, title:"XUẤT THẦN", isWin:true}; if(s>60) return {payout:b, message:`Trúng bảng (${s}đ)! X2 tiền!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Phóng trượt (${s}đ)! Mất ${b.toLocaleString()} PP!`, title:"TRƯỢT", isWin:false}; });
-window.playRussianRoulette = () => executeBet("CÒ QUAY NGA", (b) => { if(Math.random()<0.25) return {payout:-b, message:`ĐÙNG!!! Súng nổ (25% chết)!\nMất sạch ${b.toLocaleString()} PP.`, title:"CHẾT RỒI", isWin:false}; return {payout:b*4, message:`Súng không nổ! Sống sót nhận ${(b*4).toLocaleString()} PP!`, title:"BẢN LĨNH", isWin:true}; });
 window.playBaccarat = (c) => executeBet("BACCARAT", (b) => { const p=Math.floor(Math.random()*10), k=Math.floor(Math.random()*10), win=p>k?'PLAYER':(k>p?'BANKER':'TIE'); if(win==='TIE') return {payout:-(Math.floor(b*0.1)), message:`Con: ${p} | Cái: ${k}\nHÒA NHAU! Nhà cái thu 10% phế.`, title:"HÒA", isWin:false}; if(c===win) return {payout:b, message:`Con: ${p} | Cái: ${k}\nĐOÁN ĐÚNG! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Con: ${p} | Cái: ${k}\nĐOÁN SAI! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playBlackjack = () => executeBet("BLACKJACK 21", (b) => { const gS=()=>Math.random()<0.35?22:Math.floor(Math.random()*6)+16, pS=gS(), dS=gS(); if(pS>21) return {payout:-b, message:`Bạn 22 điểm (Dễ Quắc)!\nMất ${b.toLocaleString()} PP.`, title:"QUẮC", isWin:false}; if(dS>21) return {payout:b, message:`Bạn: ${pS} | Nhà cái: Quắc!\nThắng ${b.toLocaleString()} PP.`, title:"NHÀ CÁI QUẮC", isWin:true}; if(pS===dS) return {payout:0, message:`Cùng ${pS} điểm. Hòa tiền.`, title:"HÒA", isWin:true}; if(pS>dS) return {payout:b, message:`Bạn: ${pS} | Nhà cái: ${dS}\nThắng ${b.toLocaleString()} PP!`, title:"THẮNG 21", isWin:true}; return {payout:-b, message:`Bạn: ${pS} | Nhà cái: ${dS}\nThua ${b.toLocaleString()} PP!`, title:"THUA RỒI", isWin:false}; });
 window.playBilliards = () => executeBet("BIDA", (b) => { if(Math.random()<0.25) return {payout:Math.floor(b*1.5), message:`Bi vào lỗ (Chỉ 25% trúng)!\nThắng ${(Math.floor(b*1.5)).toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Bi văng ra ngoài.\nThua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
@@ -532,7 +751,6 @@ window.playLottery = () => executeBet("XỔ SỐ", (b) => { const n=parseInt(pro
 window.playKeno = () => executeBet("KENO", (b) => { let g=parseInt(prompt("Bi (1-20):")); if(isNaN(g)||g<1||g>20) return null; const s=Math.floor(Math.random()*22)+1; if(g===s) return {payout:b*10, message:`Bi rớt vào ${s}! Thắng ${(b*10).toLocaleString()} PP!`, title:"TIÊN TRI", isWin:true}; return {payout:-b, message:`Bi rớt vào ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playMine = () => executeBet("ĐÀO ĐÁ QUÝ", (b) => { if(Math.random()<0.40) return {payout:-b, message:`Cuốc trúng Bom! Mất ${b.toLocaleString()} PP!`, title:"NỔ BANH XÁC", isWin:false}; return {payout:Math.floor(b*0.2), message:`Đào được Thạch Anh. Lời ${(Math.floor(b*0.2)).toLocaleString()} PP!`, title:"THỢ MỎ", isWin:true}; });
 window.rpsGame = (c) => executeBet("KÉO BÚA BAO", (b) => { if(Math.random()<0.25) return {payout:-b, message:`Máy nhìn trộm đòn! Thua ${b.toLocaleString()} PP!`, title:"BỊP BỢM", isWin:false}; const s=['KEO','BUA','BAO'][Math.floor(Math.random()*3)]; if(c===s) return {payout:0, message:`Máy ra ${s}. HÒA!`, title:"HÒA", isWin:true}; if((c==='KEO'&&s==='BAO')||(c==='BUA'&&s==='KEO')||(c==='BAO'&&s==='BUA')) return {payout:b, message:`Máy ra ${s}. Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Máy ra ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playZodiac = () => executeBet("HOÀNG ĐẠO", (b) => { const s=Math.floor(Math.random()*14)+1; let g=parseInt(prompt("Cung (1-12):")); if(isNaN(g)||g<1||g>12) return null; if(g===s) return {payout:b*9, message:`Kim vào cung ${s}! Thắng ${(b*9).toLocaleString()} PP!`, title:"CHIÊM TINH", isWin:true}; return {payout:-b, message:`Kim vào cung ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playCockfight = (c) => executeBet("ĐÁ GÀ", (b) => { const w = Math.random()>0.6? (c==='RED'?'BLUE':'RED') : c; if(c===w) return {payout:b, message:`Gà tung đòn hiểm thắng!\nĂn ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Gà gãy giò. Mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playThreeCards = () => executeBet("BÀI CÀO", (b) => { const pScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10, dScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10; if(pScore>dScore && Math.random()>0.1) return {payout:b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; if(pScore===dScore) return {payout:-Math.floor(b*0.2), message:`Hòa, cái thu phế 20%.`, title:"HÒA LỖ", isWin:false}; return {payout:-b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
 window.playCupid = () => executeBet("MŨI TÊN TÌNH YÊU", (b) => { const m=(Math.random()*3).toFixed(1), df=Math.floor(b*m)-b; if(df>0) return {payout:df, message:`Trúng hệ số x${m}!\nLời ${df.toLocaleString()} PP.`, title:"TRÚNG", isWin:true}; if(df===0) return {payout:0, message:`Trúng x1.0! Hòa vốn.`, title:"HÒA", isWin:true}; return {payout:df, message:`Trúng x${m}!\nLỗ ${(df*-1).toLocaleString()} PP.`, title:"LỖ", isWin:false}; });
@@ -614,7 +832,6 @@ window.tlStartGame = async () => {
     await update(ref(db, `tienlen_rooms/${myTlRoomId}`), { status: 'PLAYING', hands: hands, turn: firstTurn, turnStartTime: Date.now(), currentPile: [], passList: [], lastPlayedBy: '' });
 };
 
-// --- VALIDATOR LUẬT TIẾN LÊN CHUẨN ---
 function analyzeCards(cards) {
     if(!cards || cards.length === 0) return null;
     cards.sort((a,b) => a - b);
@@ -625,12 +842,9 @@ function analyzeCards(cards) {
     if(isSameRank && cards.length === 3) return { type: 'triple', highCard: cards[2], count: 3 };
     if(isSameRank && cards.length === 4) return { type: 'quad', highCard: cards[3], count: 4 };
 
-    // Sảnh (Straight)
     let isStraight = true; for(let i = 1; i < ranks.length; i++) { if(ranks[i] !== ranks[i-1] + 1) isStraight = false; }
-    if(isStraight && cards.length >= 3 && ranks[ranks.length-1] < 12) {
-        return { type: 'straight', highCard: cards[cards.length-1], count: cards.length };
-    }
-    // Đôi Thông
+    if(isStraight && cards.length >= 3 && ranks[ranks.length-1] < 12) { return { type: 'straight', highCard: cards[cards.length-1], count: cards.length }; }
+    
     if(cards.length >= 6 && cards.length % 2 === 0) {
         let isDoiThong = true; let pairRanks = [];
         for(let i=0; i<cards.length; i+=2) { if(Math.floor(cards[i]/4) !== Math.floor(cards[i+1]/4)) isDoiThong = false; pairRanks.push(Math.floor(cards[i]/4)); }
@@ -643,9 +857,8 @@ function analyzeCards(cards) {
 }
 
 function canBeat(playObj, pileObj) {
-    if(!pileObj) return true; // Đánh tự do nếu cọc rỗng
+    if(!pileObj) return true; 
     const pileRank = Math.floor(pileObj.highCard/4);
-    // Luật chặt heo
     if(pileObj.type === 'single' && pileRank === 12) {
         if(playObj.type === 'doithong' && playObj.pairs === 3) return true;
         if(playObj.type === 'quad') return true;
@@ -658,7 +871,6 @@ function canBeat(playObj, pileObj) {
     if(pileObj.type === 'doithong' && pileObj.pairs === 3) { if(playObj.type === 'quad' || (playObj.type === 'doithong' && playObj.pairs === 4)) return true; }
     if(pileObj.type === 'quad' && playObj.type === 'doithong' && playObj.pairs === 4) return true;
 
-    // Đánh thường
     if(playObj.type === pileObj.type && playObj.count === pileObj.count) { return playObj.highCard > pileObj.highCard; }
     return false;
 }
@@ -667,9 +879,7 @@ function getCardHTML(val, isAnimated = false, index = -1) {
     const rank = RANKS[Math.floor(val / 4)]; const suit = SUITS[val % 4]; const isRed = (val % 4 === 2 || val % 4 === 3);
     const idAttr = index >= 0 ? `id="my-card-${index}" onclick="tlToggleCard(${index})"` : '';
     const styleAttr = isAnimated ? `style="--rot: ${(Math.random()*20 - 10)}deg; left: ${Math.random()*60 - 30}px; position:absolute;"` : '';
-    return `<div ${idAttr} class="tl-card ${isRed ? 'red-suit' : 'black-suit'} ${isAnimated ? 'tl-played-card' : ''}" ${styleAttr}>
-        <div class="rank">${rank}</div><div class="suit">${suit}</div>
-    </div>`;
+    return `<div ${idAttr} class="tl-card ${isRed ? 'red-suit' : 'black-suit'} ${isAnimated ? 'tl-played-card' : ''}" ${styleAttr}><div class="rank">${rank}</div><div class="suit">${suit}</div></div>`;
 }
 
 window.tlToggleCard = (index) => {
@@ -694,10 +904,7 @@ function renderTlBoard(r) {
         const pInfo = r.players[pUid]; const isTurn = r.turn === pUid; const hasPassed = (r.passList || []).includes(pUid);
         const cardCount = r.hands && r.hands[pUid] ? r.hands[pUid].length : 13;
         
-        let html = `<div class="tl-player-badge ${isTurn ? 'active-turn' : ''} ${hasPassed ? 'passed' : ''}">
-            <img src="${pInfo.avatar}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${isTurn ? 'var(--neon-gold)' : '#fff'};">
-            <div><span class="text-blue" style="font-size:14px; font-weight:bold;">${pInfo.name}</span><br><small style="color:#ffcc00; font-size:12px;">${cardCount} lá</small></div>
-        </div>`;
+        let html = `<div class="tl-player-badge ${isTurn ? 'active-turn' : ''} ${hasPassed ? 'passed' : ''}"><img src="${pInfo.avatar}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${isTurn ? 'var(--neon-gold)' : '#fff'};"><div><span class="text-blue" style="font-size:14px; font-weight:bold;">${pInfo.name}</span><br><small style="color:#ffcc00; font-size:12px;">${cardCount} lá</small></div></div>`;
         
         if (pos !== 'bottom' && r.status === 'PLAYING') {
             html += `<div style="margin-top:15px; display:flex; justify-content:center;">${Array(cardCount).fill('<div class="tl-card-back"></div>').join('')}</div>`;
@@ -721,9 +928,7 @@ function renderTlBoard(r) {
         if(isMyTurn) {
             const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
             document.getElementById('tl-turn-msg').innerHTML = `<span style="color:var(--neon-green)">TỚI LƯỢT ĐÁNH BÀI!</span> ${mustPlay ? '<br><span style="font-size:12px; color:#ffcc00">(Đang cầm cái - Phải đánh!)</span>' : ''}`;
-        } else {
-            document.getElementById('tl-turn-msg').innerText = `Đang đợi ${r.players[r.turn].name}...`;
-        }
+        } else { document.getElementById('tl-turn-msg').innerText = `Đang đợi ${r.players[r.turn].name}...`; }
     }
 
     if(r.status === 'ENDED') {
@@ -751,17 +956,13 @@ function manageTlTimer(r) {
             const timeLeft = Math.max(0, 30 - elapsed);
             const pct = (timeLeft / 30) * 100;
             const bar = document.getElementById('tl-timer-bar');
-            bar.style.width = `${pct}%`;
-            bar.style.background = pct > 50 ? 'var(--neon-green)' : (pct > 20 ? 'var(--neon-gold)' : 'var(--neon-red)');
+            bar.style.width = `${pct}%`; bar.style.background = pct > 50 ? 'var(--neon-green)' : (pct > 20 ? 'var(--neon-gold)' : 'var(--neon-red)');
             
             if(timeLeft <= 0 && r.turn === uid) {
                 clearInterval(tlTimerInterval);
                 const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
-                if(mustPlay && r.hands[uid] && r.hands[uid].length > 0) {
-                    selectedCardsIndices = [0]; window.tlPlayCards(true); // Ép đánh lá nhỏ nhất
-                } else {
-                    window.tlPassTurn(true); // Bỏ lượt
-                }
+                if(mustPlay && r.hands[uid] && r.hands[uid].length > 0) { selectedCardsIndices = [0]; window.tlPlayCards(true); } 
+                else { window.tlPassTurn(true); }
             }
         }, 1000);
     }
@@ -773,17 +974,10 @@ window.tlPlayCards = async (isAuto = false) => {
     let myHand = r.hands[uid]; let cardsToPlay = selectedCardsIndices.map(i => myHand[i]).sort((a,b) => a - b);
     
     const playObj = analyzeCards(cardsToPlay);
-    if(!playObj) {
-        if(!isAuto) alert("Bài không hợp lệ (Không đúng sảnh/đôi/tứ quý)! Cấm đánh láo!"); return;
-    }
+    if(!playObj) { if(!isAuto) alert("Bài không hợp lệ (Không đúng sảnh/đôi/tứ quý)! Cấm đánh láo!"); return; }
     
     const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
-    if(!mustPlay) {
-        const pileObj = analyzeCards(r.currentPile);
-        if(!canBeat(playObj, pileObj)) {
-            if(!isAuto) alert("Bài này không chặt được bài trên bàn!"); return;
-        }
-    }
+    if(!mustPlay) { const pileObj = analyzeCards(r.currentPile); if(!canBeat(playObj, pileObj)) { if(!isAuto) alert("Bài này không chặt được bài trên bàn!"); return; } }
 
     let newHand = myHand.filter((_, i) => !selectedCardsIndices.includes(i));
     selectedCardsIndices = []; windowLastHandSig = ""; 
@@ -797,9 +991,7 @@ window.tlPlayCards = async (isAuto = false) => {
 
 window.tlPassTurn = async (isAuto = false) => {
     const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
-    if(!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid) {
-        if(!isAuto) alert("Đang cầm cái, bắt buộc phải ra bài!"); return;
-    }
+    if(!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid) { if(!isAuto) alert("Đang cầm cái, bắt buộc phải ra bài!"); return; }
     
     let passList = r.passList || []; passList.push(uid);
     let nextIdx = (r.playerOrder.indexOf(uid) + 1) % r.playerOrder.length; let nextUid = r.playerOrder[nextIdx];
