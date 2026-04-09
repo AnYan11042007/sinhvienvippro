@@ -1,1231 +1,577 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, get, onValue, update, remove, set, onDisconnect, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
 const firebaseConfig = { apiKey: "AIzaSyCfrD1iS1yjfjuaPIKvGb-iWcirBg1lXJE", authDomain: "appsinhvien-24482.firebaseapp.com", databaseURL: "https://appsinhvien-24482-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "appsinhvien-24482" };
-const app = initializeApp(firebaseConfig); const db = getDatabase(app);
+const app = initializeApp(firebaseConfig); const db = getDatabase(app); const uid = localStorage.getItem('uid');
 
-let activeQuizId = null; let quizTimerInterval = null; let myCurrentPvPRoomId = null; let isSystemLoaded = false; window.adminFilterClass = 'ALL';
-let txBet = 0; let txChoice = ''; let txResult = []; let isTxRevealed = false;
-let flightInterval; let isFlying = false; let currentMultiplier = 0.00; let crashPoint = 1.00; let flightBetAmount = 0; let pX = -10, pY = 80;
-let fbBet = 0; let fbChoice = '';
+let activeQuizId=null; let quizTimerInterval=null; let isSystemLoaded=false; window.adminFilterClass='ALL';
+window.txBet = 0; window.txChoice = ''; window.isTxRevealed = false; window.txD1 = 1; window.txD2 = 1; window.txD3 = 1;
+window.isBjAction = false; 
 
-// ==========================================
-// 🔔 HỆ THỐNG CUSTOM ALERT
-// ==========================================
-window.showResult = (title, message, isWin) => {
-    const modal = document.getElementById('result-modal'); const t = document.getElementById('result-title'); const msg = document.getElementById('result-msg'); const icon = document.getElementById('result-icon'); const btn = document.getElementById('result-close-btn');
-    t.innerText = "ĐANG XỬ LÝ..."; t.className = "text-blue glow-pulse"; msg.innerHTML = ""; icon.className = "fas fa-spinner fa-spin fa-3x text-blue"; btn.style.display = 'none'; modal.style.display = 'flex';
-    setTimeout(() => { t.innerText = title; t.className = isWin ? 'text-gold glow-pulse' : 'text-red glow-pulse'; msg.innerHTML = message.replace(/\n/g, '<br><br>'); icon.className = isWin ? "fas fa-trophy fa-3x text-gold" : "fas fa-skull fa-3x text-red"; btn.style.display = 'block'; }, 1500);
+window.showResult = (title, message, isWin) => { const modal = document.getElementById('result-modal'); const t = document.getElementById('result-title'); const msg = document.getElementById('result-msg'); const icon = document.getElementById('result-icon'); const btn = document.getElementById('result-close-btn'); t.innerText = "ĐANG XỬ LÝ..."; t.className = "text-blue glow-pulse"; msg.innerHTML = ""; icon.className = "fas fa-spinner fa-spin fa-3x text-blue"; btn.style.display = 'none'; modal.style.display = 'flex'; setTimeout(() => { t.innerText = title; t.className = isWin ? 'text-gold glow-pulse' : 'text-red glow-pulse'; msg.innerHTML = message.replace(/\n/g, '<br><br>'); icon.className = isWin ? "fas fa-trophy fa-3x text-gold" : "fas fa-skull fa-3x text-red"; btn.style.display = 'block'; }, 1500); };
+window.logGame = async (uidLog, nameLog, game, bet, pnl, res) => { await push(ref(db, 'game_logs'), { uid: uidLog, name: nameLog, game: game, bet: bet, pnl: pnl, result: res, time: new Date().toLocaleString('vi-VN'), timestamp: Date.now() }); };
+function formatDate(dStr) { if(!dStr || dStr === 'Không có') return ''; const p = dStr.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : dStr; }
+window.toggleMusic = () => { const a = document.getElementById('bgMusic'), b = document.getElementById('music-toggle'); if (a.paused) { a.play().catch(()=>{}); b.innerHTML = '<i class="fas fa-volume-up"></i> [ TẮT NHẠC ]'; b.style.color = 'var(--neon-gold)'; } else { a.pause(); b.innerHTML = '<i class="fas fa-music"></i> [ BẬT NHẠC ]'; b.style.color = ''; } };
+window.switchTab = (tab) => { ['academic', 'casino', 'bank', 'gold'].forEach(t => { if(document.getElementById(`nav-${t}`)) document.getElementById(`nav-${t}`).classList.remove('active'); if(document.getElementById(`tab-${t}`)) document.getElementById(`tab-${t}`).style.display = 'none'; }); if(document.getElementById(`nav-${tab}`)) document.getElementById(`nav-${tab}`).classList.add('active'); if(document.getElementById(`tab-${tab}`)) document.getElementById(`tab-${tab}`).style.display = 'grid'; if(tab === 'gold' && typeof goldChartObj !== 'undefined' && goldChartObj) { setTimeout(() => { goldChartObj.resize(); goldChartObj.update(); }, 150); } };
+window.login = async () => { const u = document.getElementById('username').value.trim(), p = document.getElementById('password').value.trim(); const snap = await get(ref(db, `users/${u}`)); if (snap.exists() && snap.val().pass === p) { if(snap.val().locked) return alert("TÀI KHOẢN BỊ KHÓA!"); localStorage.setItem('uid', u); location.reload(); } else alert("SAI UID/PASS!"); };
+window.logout = async () => { if(uid) { await remove(ref(db, `online/${uid}`)); } localStorage.removeItem('uid'); localStorage.removeItem('uname'); location.reload(); };
+
+window.setupTaiXiuDrag = () => { const cup = document.getElementById('taixiu-cup'); if(!cup) return; let isDragging = false, startX, startY, currentX = 0, currentY = 0; const startDrag = (e) => { if(window.isTxRevealed) return; isDragging = true; startX = (e.clientX || (e.touches && e.touches[0].clientX)) - currentX; startY = (e.clientY || (e.touches && e.touches[0].clientY)) - currentY; cup.style.cursor = 'grabbing'; cup.style.transition = 'none'; }; const doDrag = (e) => { if(!isDragging) return; currentX = (e.clientX || (e.touches && e.touches[0].clientX)) - startX; currentY = (e.clientY || (e.touches && e.touches[0].clientY)) - startY; cup.style.transform = `translate(${currentX}px, ${currentY}px)`; if(Math.abs(currentX) > 120 || Math.abs(currentY) > 120) { isDragging = false; window.finishTaiXiuReveal(); } }; const stopDrag = () => { isDragging = false; cup.style.cursor = 'grab'; }; cup.onmousedown = startDrag; window.onmousemove = doDrag; window.onmouseup = stopDrag; cup.ontouchstart = startDrag; window.ontouchmove = doDrag; window.ontouchend = stopDrag; };
+
+// FIX: Ý Kiến / Tố Cáo System
+window.sendExpelRequest = async () => {
+    const target = document.getElementById('expel-uid').value.trim();
+    const reason = document.getElementById('expel-reason').value.trim();
+    if(!reason) return alert("Vui lòng nhập nội dung!");
+    const uname = localStorage.getItem('uname');
+    await push(ref(db, 'reports'), { senderId: uid, senderName: uname, target: target, reason: reason, time: new Date().toLocaleString('vi-VN'), timestamp: Date.now() });
+    alert("Đã gửi Đơn lên hệ thống cho Giáo Viên xử lý!");
+    document.getElementById('expel-reason').value = '';
 };
 
-function formatDate(dStr) { if(!dStr || dStr === 'Không có') return ''; const parts = dStr.split('-'); if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`; return dStr; }
-window.toggleMusic = () => { const audio = document.getElementById('bgMusic'), btn = document.getElementById('music-toggle'); if (audio.paused) { audio.play().catch(() => alert("Bấm vào màn hình trước khi bật nhạc!")); btn.innerHTML = '<i class="fas fa-volume-up"></i> [ TẮT NHẠC ]'; btn.style.color = 'var(--neon-gold)'; } else { audio.pause(); btn.innerHTML = '<i class="fas fa-music"></i> [ BẬT NHẠC ]'; btn.style.color = ''; } };
-
-window.switchTab = (tab) => { 
-    ['academic', 'casino', 'bank', 'gold'].forEach(t => { 
-        if(document.getElementById(`nav-${t}`)) document.getElementById(`nav-${t}`).classList.remove('active'); 
-        if(document.getElementById(`tab-${t}`)) document.getElementById(`tab-${t}`).style.display = 'none'; 
-    }); 
-    if(document.getElementById(`nav-${tab}`)) document.getElementById(`nav-${tab}`).classList.add('active'); 
-    if(document.getElementById(`tab-${tab}`)) document.getElementById(`tab-${tab}`).style.display = 'grid'; 
-
-    if(tab === 'gold' && typeof goldChartObj !== 'undefined' && goldChartObj) {
-        setTimeout(() => { goldChartObj.resize(); goldChartObj.update(); }, 150);
-    }
-};
-
-window.login = async () => { const u = document.getElementById('username').value.trim(), p = document.getElementById('password').value.trim(); const snap = await get(ref(db, `users/${u}`)); if (snap.exists() && snap.val().pass === p) { if(snap.val().locked) return alert("TÀI KHOẢN ĐÃ BỊ KHÓA!"); localStorage.setItem('uid', u); location.reload(); } else alert("SAI UID HOẶC MẬT KHẨU!"); };
-window.logout = async () => { 
-    if(uid) { 
-        await remove(ref(db, `online/${uid}`)); 
-        await push(ref(db, `online_logs/${uid}`), { action: 'LOGOUT', time: new Date().toLocaleString('vi-VN'), timestamp: Date.now(), name: localStorage.getItem('uname') || uid }); 
-    }
-    localStorage.removeItem('uid'); localStorage.removeItem('uname'); location.reload(); 
-};
-function genClassOptions(sel, all = false) { let o = all ? '<option value="ALL">TẤT CẢ LỚP</option>' : ''; for(let y=1; y<=4; y++) ['A','B','C','D'].forEach(b => { const v=`Y${y}_${b}`; o+=`<option value="${v}" ${v===sel?'selected':''}>Lớp ${y}-${b}</option>`; }); return o; }
-
-const uid = localStorage.getItem('uid');
-if (uid) {
-    document.getElementById('login-screen').style.display = 'none'; document.getElementById('dashboard').style.display = 'flex';
-    if(document.getElementById('add-class-select')) { document.getElementById('add-class-select').innerHTML = genClassOptions('Y1_A'); document.getElementById('filter-class-select').innerHTML = genClassOptions('ALL', true); }
-    loadSystem();
-}
-
+// SYSTEM CORE
 function loadSystem() {
     if(isSystemLoaded) return; isSystemLoaded = true;
-    
-    const connectedRef = ref(db, '.info/connected');
-    
-    onValue(ref(db, `users/${uid}`), snap => {
-        const u = snap.val(); if(!u) return;
-        localStorage.setItem('uname', u.name);
-        document.getElementById('avatar-container').innerHTML = u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<i class="fas fa-user-ninja"></i>`;
-        document.getElementById('display-name').innerHTML = u.role === 'TEACHER' ? `${u.name} <i class="fas fa-pen" onclick="changeTeacherName()" style="font-size:10px;cursor:pointer;"></i>` : u.name;
-        document.getElementById('role-badge').innerText = u.role === 'TEACHER' ? 'FACULTY' : `LỚP ${u.class}`;
-        if(document.getElementById('pvp-p1-avatar')) { document.getElementById('pvp-p1-avatar').src = u.avatar || 'https://i.pravatar.cc/150?u=my'; document.getElementById('pvp-p1-name').innerText = u.name; }
-        if(u.role === 'TEACHER') { document.getElementById('teacher-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'none'; document.getElementById('nav-bank').style.display = 'none'; document.getElementById('nav-casino').style.display = 'none'; document.getElementById('nav-gold').style.display = 'none'; } 
-        else { document.getElementById('student-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'flex'; document.getElementById('nav-bank').style.display = 'flex'; document.getElementById('nav-casino').style.display = 'flex'; document.getElementById('nav-gold').style.display = 'flex'; document.getElementById('display-pp').innerText = (u.pp || 0).toLocaleString(); renderStudentGrades(u); updateMyGoldUI(u); }
-    });
-
-    onValue(connectedRef, (snap) => {
-        if (snap.val() === true) {
-            const myOnlineRef = ref(db, `online/${uid}`);
-            const uname = localStorage.getItem('uname') || 'Sinh Viên';
-            set(myOnlineRef, { name: uname, time: Date.now() });
-            onDisconnect(myOnlineRef).remove();
-            
-            if (!window.hasLoggedLogin) {
-                window.hasLoggedLogin = true;
-                push(ref(db, `online_logs/${uid}`), { action: 'LOGIN', time: new Date().toLocaleString('vi-VN'), timestamp: Date.now(), name: uname });
-            }
-            onDisconnect(push(ref(db, `online_logs/${uid}`))).set({ action: 'LOGOUT', time: 'Mất kết nối', timestamp: {'.sv': 'timestamp'}, name: uname });
-        }
-    });
-
-    onValue(ref(db, 'classes'), snap => {
-        const clss = snap.val() || {}; let data = Object.keys(clss).map(k => ({id:k, ...clss[k]})).sort((a,b) => b.cp - a.cp); let hS = "", hA = "";
-        data.forEach((c, i) => { hS += `<tr><td>#${i+1}</td><td>Lớp ${c.name}</td><td class="text-gold">${c.cp}</td></tr>`; hA += `<tr><td class="text-blue">Lớp ${c.name}</td><td><input type="number" value="${c.cp}" onchange="window.upCP('${c.id}',this.value)" class="cyber-input" style="width:70px;padding:2px;text-align:center;"></td></tr>`; });
-        if(document.getElementById('student-class-rank')) document.getElementById('student-class-rank').innerHTML = hS; if(document.getElementById('admin-class-control')) document.getElementById('admin-class-control').innerHTML = hA;
-    });
-
-    onValue(ref(db, 'users'), snap => {
-        const us = snap.val() || {}; let arr = []; for(let id in us) if(us[id].role === 'STUDENT') arr.push({id, ...us[id]});
-        arr.sort((a,b) => (Number(b.pp)||0) - (Number(a.pp)||0)); let hTop = ""; arr.slice(0, 50).forEach((s) => hTop += `<tr><td>${s.id}</td><td>${s.name}</td><td class="text-gold" style="font-weight:bold; font-size:15px;">${(Number(s.pp)||0).toLocaleString()}</td></tr>`);
-        if(document.getElementById('top-50-students')) document.getElementById('top-50-students').innerHTML = hTop;
-
-        const filter = window.adminFilterClass; let hAdmin = ""; let count = 0; let adminArr = arr.filter(u => filter === 'ALL' || u.classKey === filter);
-        adminArr.sort((a, b) => { const cA = a.classKey || ""; const cB = b.classKey || ""; if (cA === cB) return (Number(b.pp) || 0) - (Number(a.pp) || 0); return cA.localeCompare(cB); });
-        adminArr.forEach(u => { count++; hAdmin += `<tr><td>${u.id}</td><td><input type="text" value="${u.name}" onchange="window.upU('${u.id}','name',this.value)" class="cyber-input" style="width:70px;"></td><td><input type="text" value="${u.pass}" onchange="window.upU('${u.id}','pass',this.value)" class="cyber-input" style="width:40px;"></td><td>Y:${u.year} S:${u.sem}</td><td><select onchange="window.upC('${u.id}',this.value)" class="cyber-input">${genClassOptions(u.classKey)}</select></td><td>${(Number(u.pp)||0).toLocaleString()}</td><td><button onclick="window.addPP('${u.id}')" class="btn-mini add">+PP</button><button onclick="window.subPP('${u.id}')" class="btn-mini sub">-PP</button><button onclick="window.openGrades('${u.id}','${u.name}')" class="btn-mini add">ĐIỂM</button><button onclick="window.openSubModal('${u.id}')" class="btn-mini add">+MÔN</button><button onclick="window.lockU('${u.id}',${!u.locked})" class="btn-mini del">${u.locked?'MỞ':'KHÓA'}</button><button onclick="window.delU('${u.id}')" class="btn-mini del">X</button></td></tr>`; });
-        if (document.getElementById('admin-users')) document.getElementById('admin-users').innerHTML = hAdmin; if (document.getElementById('student-count')) document.getElementById('student-count').innerText = count;
-    });
-
-    onValue(ref(db, 'quests'), snap => {
-        let hStudent = ""; let hAdmin = ""; const qs = snap.val() || {};
-        for(let id in qs) {
-            const q = qs[id]; const dLine = q.deadline && q.deadline !== 'Không có' ? formatDate(q.deadline) : 'Vô thời hạn'; const isExpired = q.deadline && q.deadline !== 'Không có' && new Date() > new Date(q.deadline + "T23:59:59");
-            hAdmin += `<div style="display:flex;justify-content:space-between;padding:12px;border-bottom:1px solid #333; background: rgba(255,255,255,0.02); margin-bottom:5px; border-radius:8px;"><div><strong class="text-green">${q.title}</strong><br><small style="color:#aaa;">Thưởng: ${q.rewardPP} PP | Hạn: ${dLine}</small></div><button onclick="window.delQ('${id}')" class="btn-mini del" style="height:fit-content; padding:8px 12px;"><i class="fas fa-trash"></i></button></div>`;
-            if(q.status === 'OPEN') {
-                const maxAtt = parseInt(q.maxAttempts) || 1; const att = q.attempts?.[uid] || 0; const canPlay = !isExpired && att < maxAtt; let btnHtml = '';
-                if (isExpired) btnHtml = `<button class="btn-cyber" style="background:#333; border-color:#555; color:#888; cursor:not-allowed;">[ HẾT HẠN ]</button>`; else if (att >= maxAtt) btnHtml = `<button class="btn-cyber" style="background:rgba(0,255,128,0.1); border-color:var(--neon-green); color:var(--neon-green); cursor:not-allowed;">[ ĐÃ HOÀN THÀNH ]</button>`; else btnHtml = `<button onclick="openQuiz('${id}')" class="btn-cyber glow-pulse" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ GIẢI MÃ NHẬN THƯỞNG ]</button>`;
-                hStudent += `<div class="mission-item" style="border-left: 4px solid ${canPlay ? 'var(--neon-blue)' : '#555'};"><div><h4 style="margin:0; color:${canPlay ? '#fff' : '#888'}"><i class="fas fa-question-circle"></i> ${q.title}</h4><small style="color:#aaa;">Thưởng: <b class="text-gold">+${q.rewardPP} PP</b> | Phạt: <b class="text-red">-${q.penaltyPP} PP</b></small><br><small style="color:#aaa;">Lượt: ${att}/${maxAtt} | Hạn: ${dLine}</small></div>${btnHtml}</div>`;
-            }
-        }
-        if(document.getElementById('admin-quest-list')) document.getElementById('admin-quest-list').innerHTML = hAdmin || '<p style="color:#888; text-align:center;">Chưa có Quiz nào!</p>';
-        if(document.getElementById('student-mission-list')) document.getElementById('student-mission-list').innerHTML = hStudent || '<p style="color:#888; text-align:center;">Hôm nay không có bài Quiz nào!</p>';
-    });
-
-    onValue(ref(db, 'pvp_rooms'), snap => {
-        const rooms = snap.val() || {}; let liveHtml = ""; let modalHtml = ""; let amIPlaying = false;
-        for(let k in rooms) {
-            const r = rooms[k]; const isMe = (r.creator === uid || r.joiner === uid);
-            if(r.status === 'WAITING') {
-                liveHtml += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding: 8px 0;"><span style="font-size:12px;"><i class="fas fa-fire text-red"></i> <strong class="text-blue">${r.creatorName}</strong> gạ kèo <strong class="text-gold">${r.bet.toLocaleString()} PP</strong>!</span>${r.creator === uid ? `<span style="color:#888;font-size:11px;">[Phòng Bạn]</span>` : `<button onclick="pvpJoin('${k}')" class="btn-mini add" style="padding:6px 12px;">CHIẾN</button>`}</div>`;
-                if(r.creator === uid) modalHtml += `<div class="room-item" style="border-color:var(--neon-green);"><div><strong class="text-green">PHÒNG CỦA BẠN</strong><br><small>Đang chờ đối thủ...</small></div><h3 class="text-gold" style="margin:0;">${r.bet.toLocaleString()} PP</h3><button onclick="pvpCancel('${k}', ${r.bet})" class="btn-mini del" style="padding:10px;">HỦY PHÒNG</button></div>`;
-                else modalHtml += `<div class="room-item"><div style="display:flex; align-items:center; gap:10px;"><img src="${r.creatorAvatar || 'https://i.pravatar.cc/150?u=enemy'}" style="width:40px; height:40px; border-radius:50%; border:1px solid #fff;"><div><strong class="text-blue">${r.creatorName}</strong><br><small>Sẵn sàng chiến</small></div></div><h3 class="text-gold" style="margin:0;">${r.bet.toLocaleString()} PP</h3><button onclick="pvpJoin('${k}')" class="btn-cyber" style="padding:10px 20px; font-size:12px;">VÀO CHIẾN</button></div>`;
-            } else if (r.status === 'PLAYING' && isMe) {
-                amIPlaying = true; myCurrentPvPRoomId = k; const isCreator = (uid === r.creator);
-                document.getElementById('pvp-action-area').style.display = 'none'; document.getElementById('pvp-battle-area').style.display = 'block';
-                document.getElementById('pvp-pot').innerText = `TỔNG: ${(r.bet * 2).toLocaleString()} PP`; document.getElementById('pvp-log-box').innerHTML = r.log || "Trận đấu bắt đầu!"; document.getElementById('pvp-log-box').scrollTop = document.getElementById('pvp-log-box').scrollHeight;
-                document.getElementById('pvp-p1-avatar').src = isCreator ? r.creatorAvatar : r.joinerAvatar; document.getElementById('pvp-p1-name').innerText = isCreator ? r.creatorName : r.joinerName; document.getElementById('pvp-p1-hp').style.width = (isCreator ? r.p1_hp : r.p2_hp) + '%';
-                document.getElementById('pvp-p2-avatar').src = isCreator ? r.joinerAvatar : r.creatorAvatar; document.getElementById('pvp-p2-name').innerText = isCreator ? r.joinerName : r.creatorName; document.getElementById('pvp-p2-hp').style.width = (isCreator ? r.p2_hp : r.p1_hp) + '%';
-                if(r.turn === uid) { document.getElementById('pvp-controls').style.display = 'flex'; document.getElementById('pvp-wait-msg').style.display = 'none'; } else { document.getElementById('pvp-controls').style.display = 'none'; document.getElementById('pvp-wait-msg').style.display = 'block'; }
-            } else if (r.status === 'ENDED' && isMe) {
-                amIPlaying = true; document.getElementById('pvp-log-box').innerHTML = r.log; document.getElementById('pvp-controls').style.display = 'none';
-                if(r.winner === uid) { document.getElementById('pvp-wait-msg').style.display = 'block'; document.getElementById('pvp-wait-msg').innerHTML = `<button onclick="pvpClaimReward('${k}', ${r.bet*2})" class="btn-cyber w-100" style="padding:15px; border-color:var(--neon-gold); color:var(--neon-gold);">🏆 [ BẠN THẮNG! NHẬN ${(r.bet*2).toLocaleString()} PP & ĐÓNG ] 🏆</button>`; } 
-                else { document.getElementById('pvp-wait-msg').style.display = 'block'; document.getElementById('pvp-wait-msg').innerHTML = `<h3 class="text-red">BẠN ĐÃ TỬ TRẬN! MẤT SẠCH TIỀN.</h3><button onclick="window.closePvPModal()" class="btn-cyber w-100" style="padding:10px;">[ RỜI ĐI TRONG CAY ĐẮNG ]</button>`; }
-            }
-        }
-        if (document.getElementById('live-pvp-feed')) document.getElementById('live-pvp-feed').innerHTML = liveHtml || `<span style="color:#555; font-size:12px; font-style:italic;">Hiện chưa có đại gia nào lên sàn...</span>`;
-        if (!amIPlaying) {
-            if(document.getElementById('pvp-action-area')) document.getElementById('pvp-action-area').style.display = 'block'; if(document.getElementById('pvp-battle-area')) document.getElementById('pvp-battle-area').style.display = 'none';
-            if(document.getElementById('pvp-list')) document.getElementById('pvp-list').innerHTML = modalHtml || `<p style="color:#888; text-align:center; margin-top:20px;">Võ đài đang trống. Hãy tạo phòng cược ngay!</p>`;
-        }
-    });
-
-    onValue(ref(db, 'transactions'), snap => {
-        const txs = snap.val() || {}; let arr = Object.keys(txs).map(k => ({id:k, ...txs[k]})).sort((a,b) => b.timestamp - a.timestamp);
-        let hStudent = "", hAdmin = "";
-        arr.forEach(tx => {
-            const amtStr = `<strong class="text-gold">${tx.amount.toLocaleString()} PP</strong>`;
-            hAdmin += `<tr><td>${tx.time}</td><td><span class="text-blue">${tx.senderName}</span> (${tx.sender})</td><td><span class="text-red">${tx.receiverName}</span> (${tx.receiver})</td><td>${amtStr}</td><td>${tx.message}</td></tr>`;
-            if(tx.sender === uid || tx.receiver === uid) {
-                const isSent = tx.sender === uid; const typeHtml = isSent ? `<span style="color:#ff4500;">Chuyển đi <i class="fas fa-arrow-right"></i></span>` : `<span style="color:#4ade80;">Nhận về <i class="fas fa-arrow-left"></i></span>`; const partner = isSent ? `${tx.receiverName} (${tx.receiver})` : `${tx.senderName} (${tx.sender})`;
-                hStudent += `<tr><td>${tx.time}</td><td>${typeHtml}</td><td>${partner}</td><td>${amtStr}</td><td>${tx.message}</td></tr>`;
-            }
-        });
-        if(document.getElementById('admin-transactions')) document.getElementById('admin-transactions').innerHTML = hAdmin || `<tr><td colspan="5" style="text-align:center; color:#888;">Chưa có giao dịch nào</td></tr>`;
-        if(document.getElementById('student-transactions')) document.getElementById('student-transactions').innerHTML = hStudent || `<tr><td colspan="5" style="text-align:center; color:#888;">Chưa có giao dịch nào</td></tr>`;
-    });
-
-    onValue(ref(db, 'online_logs'), snap => {
-        const logs = snap.val() || {}; let arr = [];
-        for(let userId in logs) {
-            for(let key in logs[userId]) {
-                arr.push({ uid: userId, ...logs[userId][key] });
-            }
-        }
-        arr.sort((a,b) => {
-            let tA = a.timestamp; let tB = b.timestamp;
-            if(typeof tA === 'object') tA = Date.now();
-            if(typeof tB === 'object') tB = Date.now();
-            return tB - tA;
-        });
-        let h = "";
-        arr.slice(0, 100).forEach(log => {
-            const clss = log.action === 'LOGIN' ? 'text-green' : 'text-red';
-            h += `<tr><td>${log.uid}</td><td>${log.name || 'Sinh viên'}</td><td class="${clss}" style="font-weight:bold;">${log.action}</td><td>${log.time}</td></tr>`;
-        });
-        if(document.getElementById('admin-online-logs')) document.getElementById('admin-online-logs').innerHTML = h || `<tr><td colspan="4" style="text-align:center; color:#888;">Chưa có dữ liệu</td></tr>`;
-    });
-
-    startGoldMarketLoop();
-    listenGoldMarket();
-}
-window.loadAdmin = () => { /* Auto */ };
-
-window.transferPP = async () => {
-    const tUid = document.getElementById('transfer-uid').value.trim(), amt = parseInt(document.getElementById('transfer-amount').value), msg = document.getElementById('transfer-msg').value.trim() || 'Không có lời nhắn';
-    if(!tUid || isNaN(amt) || amt <= 0) return alert("Thông tin chuyển khoản không hợp lệ!");
-    if(tUid === uid) return alert("Không thể tự chuyển tiền cho chính mình!");
-    const mySnap = await get(ref(db, `users/${uid}`)); const myData = mySnap.val();
-    if((Number(myData.pp)||0) < amt) return alert("Bạn không đủ PP để chuyển!");
-    const targetSnap = await get(ref(db, `users/${tUid}`));
-    if(!targetSnap.exists()) return alert("UID Người nhận không tồn tại!");
-    const targetData = targetSnap.val();
-    await update(ref(db, `users/${uid}`), { pp: (Number(myData.pp)||0) - amt }); await update(ref(db, `users/${tUid}`), { pp: (Number(targetData.pp)||0) + amt });
-    await set(ref(db, `transactions/TX_${Date.now()}`), { sender: uid, senderName: myData.name, receiver: tUid, receiverName: targetData.name, amount: amt, message: msg, time: new Date().toLocaleString('vi-VN'), timestamp: Date.now() });
-    alert(`Đã chuyển ${amt.toLocaleString()} PP cho ${targetData.name}!`);
-    document.getElementById('transfer-amount').value = ''; document.getElementById('transfer-msg').value = '';
-};
-
-// ==========================================
-// 🛠️ ADMIN TOOLS & QUIZ
-// ==========================================
-function renderStudentGrades(u) { const tb = document.getElementById('student-grades'); if(!tb) return; tb.innerHTML = ''; if(!u.academic) return; Object.keys(u.academic).sort().forEach(tk => { tb.innerHTML += `<tr class="term-group-header"><td colspan="6">${tk}</td></tr>`; for(let sk in u.academic[tk]) { const s = u.academic[tk][sk]; tb.innerHTML += `<tr><td>${s.name}</td><td>${s.bth}</td><td>${s.gk}</td><td>${s.ck}</td><td>${s.final}</td><td class="text-gold">${s.grade}</td></tr>`; } }); }
-window.adminCreateUser = async () => { const id = document.getElementById('add-uid').value.trim(), n = document.getElementById('add-name').value.trim(), ck = document.getElementById('add-class-select').value, p = document.getElementById('add-pass').value.trim() || "123", pp = parseInt(document.getElementById('add-pp').value) || 1000; if(!id || !n) return alert("Nhập UID và Tên!"); const y = parseInt(ck[1]); await set(ref(db, `users/${id}`), { name:n, classKey:ck, class:`${y}-${ck.split('_')[1]}`, year:y, sem:1, role:"STUDENT", pass:p, pp:pp, avatar:"", stats:[50,50,50,50,50], locked:false }); alert(`Tạo tài khoản ${id} xong!`); document.getElementById('add-uid').value = ''; document.getElementById('add-name').value = ''; };
-let curSID = null; window.openSubModal = id => { curSID = id; document.getElementById('subject-modal').style.display = 'flex'; }; window.closeSubjectModal = () => { document.getElementById('subject-modal').style.display = 'none'; curSID = null; };
-window.adminSaveSubject = async () => { const y = document.getElementById('subj-year').value, s = document.getElementById('subj-sem').value, n = document.getElementById('subj-name').value.trim(), b = parseFloat(document.getElementById('subj-bth').value)||0, g = parseFloat(document.getElementById('subj-gk').value)||0, c = parseFloat(document.getElementById('subj-ck').value)||0; if(!n) return alert("Nhập Tên môn học!"); const f = Math.round(((b*1+g*2+c*3)/6)*10)/10, gr = f>=8.5?'A':f>=7?'B':f>=5.5?'C':f>=4?'D':'F'; await update(ref(db, `users/${curSID}/academic/Year${y}_Sem${s}/sub_${Date.now()}`), { name:n, bth:b, gk:g, ck:c, final:f, grade:gr }); alert("Đã thêm điểm!"); window.closeSubjectModal(); };
-window.lockU = (id, st) => update(ref(db, `users/${id}`), { locked: st });
-window.adminCreateQuest = async () => { const t = document.getElementById('q-title').value, q = document.getElementById('q-question').value, a = document.getElementById('q-optA').value, b = document.getElementById('q-optB').value, c = document.getElementById('q-correct').value, pp = parseInt(document.getElementById('q-pp').value) || 0, pn = parseInt(document.getElementById('q-penalty').value) || 0, l = parseInt(document.getElementById('q-limit').value) || 999, m = parseInt(document.getElementById('q-max-attempts').value) || 1, tm = parseInt(document.getElementById('q-time').value) || 0, dl = document.getElementById('q-deadline').value || 'Không có'; if(!t || !q || !a || !b) return alert("Điền ĐẦY ĐỦ Tên, Câu hỏi và Đáp án!"); await set(ref(db, `quests/Q_${Date.now()}`), { title:t, question:q, optA:a, optB:b, correctOpt:c, rewardPP:pp, penaltyPP:pn, limit:l, maxAttempts:m, timeLimit:tm, deadline:dl, joined:0, status:'OPEN' }); alert("ĐĂNG QUIZ THÀNH CÔNG!"); document.getElementById('q-title').value = ''; document.getElementById('q-question').value = ''; document.getElementById('q-optA').value = ''; document.getElementById('q-optB').value = ''; };
-window.forceInitClasses = async () => { const ups = {}; for(let y=1;y<=4;y++) ['A','B','C','D'].forEach(b => { const id=`Y${y}_${b}`; ups[`classes/${id}`] = { year:y, name:`${y}-${b}`, cp:1000 }; }); await update(ref(db, '/'), ups); alert("ĐÃ RESET CHUẨN HÓA 16 LỚP!"); };
-window.addPP = async (id) => { const amt = prompt("CỘNG PP:"); if(amt && !isNaN(amt)) { const s = await get(ref(db, `users/${id}`)); await update(ref(db, `users/${id}`), { pp: (Number(s.val().pp) || 0) + parseInt(amt) }); } };
-window.subPP = async (id) => { const amt = prompt("TRỪ PP:"); if(amt && !isNaN(amt)) { const s = await get(ref(db, `users/${id}`)); await update(ref(db, `users/${id}`), { pp: Math.max(0, (Number(s.val().pp) || 0) - parseInt(amt)) }); } };
-window.upU = (id, k, v) => update(ref(db, `users/${id}`), { [k]: v });
-window.delU = id => { if(confirm("Xóa sinh viên này?")) remove(ref(db, `users/${id}`)); };
-window.upCP = (id, v) => update(ref(db, `classes/${id}`), { cp: parseInt(v) });
-window.delQ = id => { if(confirm("Xóa bài Quiz này?")) remove(ref(db, `quests/${id}`)); };
-window.upC = async (id, ck) => { const y = parseInt(ck[1]), block = ck.split('_')[1], name = `${y}-${block}`; await update(ref(db, `users/${id}`), { classKey: ck, class: name, year: y }); };
-window.changeAvatar = () => { const url = prompt("Nhập Link ảnh (URL):"); if(url) update(ref(db, `users/${uid}`), { avatar: url }); };
-window.changeTeacherName = () => { const n = prompt("Tên giáo viên mới:"); if(n) update(ref(db, `users/${uid}`), { name: n }); };
-window.closeQuizModal = () => { if(quizTimerInterval) clearInterval(quizTimerInterval); document.getElementById('quiz-modal').style.display = 'none'; };
-window.closeViewGradesModal = () => document.getElementById('view-grades-modal').style.display = 'none';
-window.sendExpelRequest = async () => { const t = document.getElementById('expel-uid').value, r = document.getElementById('expel-reason').value; if(!t||!r) return alert("Nhập UID và Lý do!"); await set(ref(db, `messages/msg_${Date.now()}`), { senderUid: uid, senderName: (await get(ref(db, `users/${uid}`))).val().name, targetUid: t, reason: r, status: 'PENDING', adminReply: '' }); alert("Gửi đơn tố cáo thành công! Chờ Admin duyệt."); };
-window.replyM = async (id, st) => { const r = prompt("Nhập lý do duyệt/từ chối:"); if(r!==null) await update(ref(db, `messages/${id}`), { status: st, adminReply: r }); };
-
-window.openQuiz = async id => {
-    const s = await get(ref(db, `quests/${id}`)); const q = s.val(); if(!q) return;
-    if(q.deadline && q.deadline !== 'Không có' && new Date() > new Date(q.deadline + "T23:59:59")) return alert("BÀI NÀY ĐÃ HẾT HẠN LÀM!");
-    const maxAtt = parseInt(q.maxAttempts) || 1; const att = q.attempts?.[uid] || 0; 
-    if(att >= maxAtt) return alert("BẠN KHÔNG CÒN LƯỢT LÀM BÀI NÀY!");
-    activeQuizId = id; document.getElementById('quiz-title').innerText = q.title; document.getElementById('quiz-question').innerText = q.question; document.getElementById('quiz-optA').innerText = q.optA; document.getElementById('quiz-optB').innerText = q.optB; document.getElementById('quiz-info').innerText = `Phạt: ${q.penaltyPP} PP | Lượt: ${att}/${maxAtt}`;
-    const tl = parseInt(q.timeLimit) || 0;
-    if(tl > 0) { let timeLeft = tl; document.getElementById('quiz-timer').innerText = `🕒 ${timeLeft}s`; if(quizTimerInterval) clearInterval(quizTimerInterval); quizTimerInterval = setInterval(() => { timeLeft--; document.getElementById('quiz-timer').innerText = `🕒 ${timeLeft}s`; if(timeLeft <= 0) { clearInterval(quizTimerInterval); window.submitQuiz('TIMEOUT'); } }, 1000); } else { document.getElementById('quiz-timer').innerText = ''; }
-    document.getElementById('quiz-modal').style.display = 'flex';
-};
-window.submitQuiz = async opt => {
-    if(quizTimerInterval) clearInterval(quizTimerInterval);
-    const qS = await get(ref(db, `quests/${activeQuizId}`)); const q = qS.val(); if(!q) return window.closeQuizModal();
-    const att = q.attempts?.[uid] || 0; await update(ref(db, `quests/${activeQuizId}/attempts`), { [uid]: att + 1 }); 
-    const uS = await get(ref(db, `users/${uid}`)); const u = uS.val(); const currentPP = Number(u.pp) || 0;
-    if (opt === 'TIMEOUT') { await update(ref(db, `users/${uid}`), { pp: Math.max(0, currentPP - q.penaltyPP) }); window.showResult("HẾT GIỜ!", `Bạn đã bị phạt ${q.penaltyPP.toLocaleString()} PP!`, false); } 
-    else if(opt === q.correctOpt) { await update(ref(db, `users/${uid}`), { pp: currentPP + q.rewardPP }); window.showResult("CHÍNH XÁC!", `Bạn được cộng ${q.rewardPP.toLocaleString()} PP!`, true); } 
-    else { await update(ref(db, `users/${uid}`), { pp: Math.max(0, currentPP - q.penaltyPP) }); window.showResult("SAI RỒI!", `Đã chọn sai. Bạn bị phạt ${q.penaltyPP.toLocaleString()} PP!`, false); }
-    window.closeQuizModal();
-};
-
-// ==========================================
-// ⚔️ NEON ARENA (PvP)
-// ==========================================
-window.openPvPModal = () => { document.getElementById('pvp-modal').style.display = 'flex'; };
-window.closePvPModal = () => { document.getElementById('pvp-modal').style.display = 'none'; myCurrentPvPRoomId = null; };
-window.pvpCreate = async () => { let bet = prompt("Nhập số PP cược Võ Đài:"); if(!bet) return; bet = parseInt(bet); if(isNaN(bet) || bet <= 0) return alert("Số cược không hợp lệ!"); const snap = await get(ref(db, `users/${uid}`)); const u = snap.val(); if((Number(u.pp)||0) < bet) return alert("Không đủ PP!"); await update(ref(db, `users/${uid}`), { pp: (Number(u.pp)||0) - bet }); await set(ref(db, `pvp_rooms/PVP_${Date.now()}`), { creator: uid, creatorName: u.name, creatorAvatar: u.avatar || 'https://i.pravatar.cc/150', bet: bet, status: 'WAITING', timestamp: Date.now() }); };
-window.pvpCancel = async (roomId, bet) => { const snap = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(snap.val().pp)||0) + bet }); await remove(ref(db, `pvp_rooms/${roomId}`)); alert("Đã hoàn trả PP."); };
-window.pvpJoin = async (roomId) => { const rSnap = await get(ref(db, `pvp_rooms/${roomId}`)); const room = rSnap.val(); if(!room || room.status !== 'WAITING') return alert("Phòng không khả dụng!"); const snap = await get(ref(db, `users/${uid}`)); const u = snap.val(); if((Number(u.pp)||0) < room.bet) return alert("Không đủ PP!"); await update(ref(db, `users/${uid}`), { pp: (Number(u.pp)||0) - room.bet }); await update(ref(db, `pvp_rooms/${roomId}`), { status: 'PLAYING', joiner: uid, joinerName: u.name, joinerAvatar: u.avatar || 'https://i.pravatar.cc/150?u=enemy', p1_hp: 100, p2_hp: 100, turn: room.creator, log: `<br>💥 Trận đấu sinh tử bắt đầu!\nLượt đầu tiên: ${room.creatorName}.` }); };
-window.pvpAction = async (type) => { if(!myCurrentPvPRoomId) return; const rSnap = await get(ref(db, `pvp_rooms/${myCurrentPvPRoomId}`)); const room = rSnap.val(); if(!room || room.status !== 'PLAYING' || room.turn !== uid) return; const isCreator = (uid === room.creator); let myHp = isCreator ? room.p1_hp : room.p2_hp; let enemyHp = isCreator ? room.p2_hp : room.p1_hp; const enemyUid = isCreator ? room.joiner : room.creator; const myName = isCreator ? room.creatorName : room.joinerName; const enemyName = isCreator ? room.joinerName : room.creatorName; let logAdd = ""; if (type === 'ATTACK') { const dmg = Math.floor(Math.random()*11) + 15; enemyHp -= dmg; logAdd = `<br>🗡️ <b>${myName}</b> chém thường, gây <b style="color:#ff4500;">${dmg}</b> sát thương!`; } else if (type === 'HEAVY') { if(Math.random() < 0.5) { logAdd = `<br>💨 <b>${myName}</b> tung Chí Mạng nhưng TRƯỢT!`; } else { const dmg = Math.floor(Math.random()*16) + 30; enemyHp -= dmg; logAdd = `<br>⚡ <b>${myName}</b> tung CHÍ MẠNG, gây <b style="color:var(--neon-pink);">${dmg}</b> sát thương!`; } } else if (type === 'HEAL') { const heal = Math.floor(Math.random()*16) + 20; myHp = Math.min(100, myHp + heal); logAdd = `<br>🛡️ <b>${myName}</b> uống thuốc, hồi <b style="color:var(--neon-green);">${heal}</b> máu!`; } if (enemyHp <= 0) { enemyHp = 0; logAdd += `<br><br>☠️ <b>${enemyName}</b> ĐÃ GỤC NGÃ!\n🏆 <b>${myName}</b> CHIẾN THẮNG ÁP ĐẢO!`; await update(ref(db, `pvp_rooms/${myCurrentPvPRoomId}`), { p1_hp: isCreator ? myHp : enemyHp, p2_hp: isCreator ? enemyHp : myHp, log: room.log + logAdd, status: 'ENDED', winner: uid }); } else { await update(ref(db, `pvp_rooms/${myCurrentPvPRoomId}`), { p1_hp: isCreator ? myHp : enemyHp, p2_hp: isCreator ? enemyHp : myHp, log: room.log + logAdd, turn: enemyUid }); } };
-window.pvpClaimReward = async (roomId, reward) => { const snap = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(snap.val().pp)||0) + reward }); await remove(ref(db, `pvp_rooms/${roomId}`)); window.closePvPModal(); window.showResult("ĐẠI GIA", `Hốt trọn ${reward.toLocaleString()} PP!`, true); };
-
-// ==========================================
-// ⚽ CÁ CƯỢC BÓNG ĐÁ (SIÊU PHẨM 12 CẦU THỦ)
-// ==========================================
-window.openFootballGame = () => { 
-    document.getElementById('football-modal').style.display = 'flex'; 
-    document.getElementById('fb-score').innerHTML = `<span class="fb-team-xanh">XANH 0</span> - <span class="fb-team-do">0 ĐỎ</span>`; 
-    document.getElementById('fb-time').innerText = `Phút: 0'`;
-    document.getElementById('fb-commentary').innerText = "Hai đội đang khởi động. Vui lòng đặt cược!"; 
-    document.getElementById('fb-ball').style.left = '50%'; 
-    document.getElementById('fb-ball').style.top = '50%'; 
-    document.getElementById('fb-bet').value = ''; 
-    document.getElementById('fb-bet').disabled = false; 
-    document.getElementById('fb-actions').style.display = 'flex'; 
-    
-    const resetPos = {
-        'p-xanh-gk': [5, 50], 'p-xanh-1': [20, 25], 'p-xanh-2': [20, 75], 'p-xanh-3': [40, 30], 'p-xanh-4': [40, 70], 'p-xanh-5': [50, 50],
-        'p-do-gk': [95, 50], 'p-do-1': [80, 25], 'p-do-2': [80, 75], 'p-do-3': [60, 30], 'p-do-4': [60, 70], 'p-do-5': [50, 50]
-    };
-    for(let id in resetPos) {
-        const el = document.getElementById(id);
-        if(el) { el.style.left = resetPos[id][0]+'%'; el.style.top = resetPos[id][1]+'%'; }
-    }
-};
-
-window.closeFootballGame = () => { document.getElementById('football-modal').style.display = 'none'; };
-
-window.startFootballMatch = async (choice) => {
-    const bet = parseInt(document.getElementById('fb-bet').value); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
-    const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; if(currentPP < bet) return window.showResult("NGHÈO", "Bạn không đủ PP!", false);
-    
-    await update(ref(db, `users/${uid}`), { pp: currentPP - bet }); fbBet = bet; fbChoice = choice;
-    document.getElementById('fb-bet').disabled = true; document.getElementById('fb-actions').style.display = 'none';
-    
-    let time = 0; let scoreXanh = 0; let scoreDo = 0; 
-    const ball = document.getElementById('fb-ball'); const commentary = document.getElementById('fb-commentary');
-    
-    const players = [
-        { id: 'p-xanh-gk', team: 'XANH', role: 'gk', base: [5, 50], name: 'Thủ môn Xanh' },
-        { id: 'p-xanh-1', team: 'XANH', role: 'def', base: [20, 25], name: 'Hậu vệ trái Xanh' },
-        { id: 'p-xanh-2', team: 'XANH', role: 'def', base: [20, 75], name: 'Hậu vệ phải Xanh' },
-        { id: 'p-xanh-3', team: 'XANH', role: 'mid', base: [40, 30], name: 'Tiền vệ trái Xanh' },
-        { id: 'p-xanh-4', team: 'XANH', role: 'mid', base: [40, 70], name: 'Tiền vệ phải Xanh' },
-        { id: 'p-xanh-5', team: 'XANH', role: 'att', base: [50, 50], name: 'Tiền đạo Xanh' },
-
-        { id: 'p-do-gk', team: 'DO', role: 'gk', base: [95, 50], name: 'Thủ môn Đỏ' },
-        { id: 'p-do-1', team: 'DO', role: 'def', base: [80, 25], name: 'Hậu vệ trái Đỏ' },
-        { id: 'p-do-2', team: 'DO', role: 'def', base: [80, 75], name: 'Hậu vệ phải Đỏ' },
-        { id: 'p-do-3', team: 'DO', role: 'mid', base: [60, 30], name: 'Tiền vệ trái Đỏ' },
-        { id: 'p-do-4', team: 'DO', role: 'mid', base: [60, 70], name: 'Tiền vệ phải Đỏ' },
-        { id: 'p-do-5', team: 'DO', role: 'att', base: [50, 50], name: 'Tiền đạo Đỏ' }
-    ];
-
-    let ballCarrier = players.find(p => p.id === 'p-xanh-5');
-    let isGoalAnim = false;
-
-    const matchInterval = setInterval(() => {
-        if(isGoalAnim) return; 
-        time++; document.getElementById('fb-time').innerText = `Phút: ${time}'`;
-
-        let bX = parseFloat(ball.style.left); let bY = parseFloat(ball.style.top);
-
-        players.forEach(p => {
-            const el = document.getElementById(p.id);
-            if(p.role === 'gk') {
-                el.style.top = (40 + Math.random()*20) + '%';
-            } else {
-                if(p === ballCarrier) {
-                    let targetX = p.team === 'XANH' ? bX + 15 : bX - 15;
-                    let targetY = bY + (Math.random()*20 - 10);
-                    targetX = Math.max(10, Math.min(90, targetX)); targetY = Math.max(10, Math.min(90, targetY));
-                    el.style.left = targetX + '%'; el.style.top = targetY + '%';
-                } else {
-                    let range = 15;
-                    let targetX = p.base[0] + (Math.random()*range*2 - range);
-                    let targetY = p.base[1] + (Math.random()*range*2 - range);
-                    
-                    if(p.team === ballCarrier.team && p.role === 'att') { targetX = p.team === 'XANH' ? targetX + 15 : targetX - 15; }
-                    if(p.team !== ballCarrier.team && Math.random() < 0.6) { targetX = (targetX + bX) / 2; targetY = (targetY + bY) / 2; }
-
-                    targetX = Math.max(5, Math.min(95, targetX)); targetY = Math.max(5, Math.min(95, targetY));
-                    el.style.left = targetX + '%'; el.style.top = targetY + '%';
-                }
-            }
-        });
-
-        const action = Math.random();
-        if (action < 0.2) { 
-            const isGoal = Math.random() < 0.3; 
-            isGoalAnim = true;
-            if(isGoal) {
-                if(ballCarrier.team === 'XANH') {
-                    scoreXanh++; ball.style.left = '98%'; ball.style.top = '50%';
-                    commentary.innerHTML = `<span class="text-blue">VÀOOOO!!! Siêu phẩm của ${ballCarrier.name}!</span>`;
-                } else {
-                    scoreDo++; ball.style.left = '2%'; ball.style.top = '50%';
-                    commentary.innerHTML = `<span class="text-red">VÀOOOO!!! Đội ĐỎ mở tỉ số do công của ${ballCarrier.name}!</span>`;
-                }
-                document.getElementById('fb-score').innerHTML = `<span class="fb-team-xanh">XANH ${scoreXanh}</span> - <span class="fb-team-do">${scoreDo} ĐỎ</span>`;
-
-                setTimeout(() => {
-                    isGoalAnim = false;
-                    ballCarrier = players.find(p => p.role === 'att' && p.team !== ballCarrier.team);
-                    ball.style.left = '50%'; ball.style.top = '50%';
-                }, 2000);
-            } else {
-                if(ballCarrier.team === 'XANH') { ball.style.left = '95%'; ball.style.top = (Math.random() < 0.5 ? '20%' : '80%'); }
-                else { ball.style.left = '5%'; ball.style.top = (Math.random() < 0.5 ? '20%' : '80%'); }
-                commentary.innerText = `Không vào! Thủ môn đã cản phá cú sút của ${ballCarrier.name}!`;
-                setTimeout(() => { isGoalAnim = false; ballCarrier = players.find(p => p.role === 'gk' && p.team !== ballCarrier.team); }, 1000);
-            }
-        } else if (action < 0.5) { 
-            const teammates = players.filter(p => p.team === ballCarrier.team && p.role !== 'gk' && p !== ballCarrier);
-            ballCarrier = teammates[Math.floor(Math.random() * teammates.length)];
-            commentary.innerText = `Đường chuyền dài vượt tuyến cực đẹp!`;
-        } else if (action < 0.8) { 
-            const enemies = players.filter(p => p.team !== ballCarrier.team && p.role !== 'gk');
-            ballCarrier = enemies[Math.floor(Math.random() * enemies.length)];
-            commentary.innerText = `Bóng đã bị ${ballCarrier.name} cướp được! Phản công nhanh!`;
+    onValue(ref(db, `users/${uid}`), snap => { 
+        const u = snap.val(); if(!u) return; localStorage.setItem('uname', u.name); 
+        document.getElementById('avatar-container').innerHTML = u.avatar ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : `<i class="fas fa-user-ninja"></i>`; 
+        document.getElementById('display-name').innerHTML = u.role === 'TEACHER' ? `${u.name} <i class="fas fa-pen" onclick="changeTeacherName()" style="font-size:10px;cursor:pointer;"></i>` : u.name; 
+        document.getElementById('role-badge').innerText = u.role === 'TEACHER' ? 'FACULTY' : `LỚP ${u.class}`; 
+        
+        if(u.role === 'TEACHER') { 
+            document.getElementById('teacher-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'none'; document.getElementById('nav-bank').style.display = 'none'; document.getElementById('nav-casino').style.display = 'none'; document.getElementById('nav-gold').style.display = 'none'; 
         } else { 
-            commentary.innerText = `${ballCarrier.name} đang dùng kỹ thuật rê bóng lắt léo!`;
-        }
+            document.getElementById('student-view').style.display = 'block'; document.getElementById('nav-academic').style.display = 'flex'; document.getElementById('nav-bank').style.display = 'flex'; document.getElementById('nav-casino').style.display = 'flex'; document.getElementById('nav-gold').style.display = 'flex'; 
+            document.getElementById('display-pp').innerText = (Number(u.pp) || 0).toLocaleString(); 
+            renderStudentGrades(u); updateMyGoldUI(u); 
+        } 
+    });
+    
+    onValue(ref(db, '.info/connected'), (snap) => { if (snap.val() === true) { const myOnlineRef = ref(db, `online/${uid}`); const uname = localStorage.getItem('uname') || 'Sinh Viên'; set(myOnlineRef, { name: uname, time: Date.now() }); onDisconnect(myOnlineRef).remove(); } });
+    onValue(ref(db, 'online'), snap => { const data = snap.val() || {}; const count = Object.keys(data).length; const names = Object.values(data).map(u => u.name).join(', '); const badge = document.getElementById('online-count-badge'); if(badge) badge.innerHTML = `🟢 Online (${count}): <span style="color:#fff; font-weight:normal;">${names}</span>`; });
 
-        if(!isGoalAnim) {
-            ball.style.left = document.getElementById(ballCarrier.id).style.left;
-            ball.style.top = document.getElementById(ballCarrier.id).style.top;
-        }
-
-        if(time >= 60) {
-            clearInterval(matchInterval);
-            ball.style.left = '50%'; ball.style.top = '50%';
-            commentary.innerText = "HẾT GIỜ! Trọng tài đã thổi còi mãn cuộc.";
-            
-            setTimeout(async () => {
-                window.closeFootballGame();
-                const fSnap = await get(ref(db, `users/${uid}`)); const fPP = Number(fSnap.val().pp) || 0;
-                let winTeam = 'DRAW'; if(scoreXanh > scoreDo) winTeam = 'XANH'; if(scoreDo > scoreXanh) winTeam = 'DO';
-
-                if(winTeam === 'DRAW') {
-                    await update(ref(db, `users/${uid}`), { pp: fPP + fbBet }); window.showResult("HÒA NHAU", `Tỉ số chung cuộc: Xanh ${scoreXanh} - ${scoreDo} Đỏ.\nBạn được hoàn lại tiền cược.`, true);
-                } else if(fbChoice === winTeam) {
-                    await update(ref(db, `users/${uid}`), { pp: fPP + (fbBet*2) }); window.showResult("THẮNG CƯỢC", `Tỉ số: Xanh ${scoreXanh} - ${scoreDo} Đỏ.\nĐội bạn chọn đã THẮNG! Ăn ${(fbBet*2).toLocaleString()} PP.`, true);
-                } else {
-                    window.showResult("THUA CƯỢC", `Tỉ số: Xanh ${scoreXanh} - ${scoreDo} Đỏ.\nĐội bạn chọn đã thua. Mất ${fbBet.toLocaleString()} PP.`, false);
-                }
-            }, 1500);
-        }
-
-    }, 1000); 
-};
-
-// ==========================================
-// ✈️ KHÔNG CHIẾN CRASH (FIXED)
-// ==========================================
-window.openAirplaneGame = () => {
-    document.getElementById('airplane-modal').style.display = 'flex';
-    resetAirplaneUI();
-};
-
-window.closeAirplaneGame = () => {
-    if(isFlying) return alert("Đang bay không được nhảy dù ngang!");
-    document.getElementById('airplane-modal').style.display = 'none';
-};
-
-function resetAirplaneUI() {
-    document.getElementById('flight-multiplier').innerText = 'x1.00';
-    document.getElementById('flight-multiplier').style.color = 'rgba(255,255,255,0.1)';
-    document.getElementById('p-plane').className = 'fas fa-space-shuttle player-plane';
-    document.getElementById('p-plane').style.left = '10px';
-    document.getElementById('p-plane').style.bottom = '15px';
-    document.getElementById('p-plane').style.display = 'block';
-    document.getElementById('p-boom').style.display = 'none';
-    document.getElementById('flight-bet').disabled = false;
-    document.getElementById('flight-bet').value = '';
-    const btn = document.getElementById('flight-action-btn');
-    btn.innerText = '[ ĐẶT CƯỢC & CẤT CÁNH ]';
-    btn.onclick = window.startFlight;
-    btn.style.borderColor = 'var(--neon-gold)';
-    btn.style.color = 'var(--neon-gold)';
-}
-
-window.startFlight = async () => {
-    if(isFlying) return;
-    const bet = parseInt(document.getElementById('flight-bet').value);
-    if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
-    const snap = await get(ref(db, `users/${uid}`));
-    const currentPP = Number(snap.val().pp) || 0;
-    if(currentPP < bet) return window.showResult("NGHÈO", "Bạn không đủ vốn!", false);
-
-    await update(ref(db, `users/${uid}`), { pp: currentPP - bet });
-    flightBetAmount = bet;
-    isFlying = true;
-
-    const e = 100 / (Math.random() * 100);
-    crashPoint = parseFloat(Math.max(1.00, Math.min(100.00, e)).toFixed(2));
-    if(Math.random() < 0.05) crashPoint = 1.00;
-
-    document.getElementById('flight-bet').disabled = true;
-    document.getElementById('p-plane').classList.add('flying');
-    const btn = document.getElementById('flight-action-btn');
-    btn.innerText = '[ NHẢY DÙ CHỐT LỜI! ]';
-    btn.style.borderColor = 'var(--neon-green)';
-    btn.style.color = 'var(--neon-green)';
-    btn.onclick = window.cashOutFlight;
-
-    currentMultiplier = 1.00;
-    let speed = 0.005;
-    let pLeft = 10;
-    let pBottom = 15;
-
-    flightInterval = setInterval(() => {
-        currentMultiplier += speed;
-        speed += 0.0002;
-        document.getElementById('flight-multiplier').innerText = `x${currentMultiplier.toFixed(2)}`;
-
-        pLeft += 0.5;
-        pBottom += 0.2;
-        if (pLeft > 80) pLeft = 80;
-        if (pBottom > 80) pBottom = 80;
-
-        const plane = document.getElementById('p-plane');
-        plane.style.left = pLeft + '%';
-        plane.style.bottom = pBottom + '%';
-
-        if(currentMultiplier >= crashPoint) {
-            clearInterval(flightInterval);
-            isFlying = false;
-            plane.classList.remove('flying');
-            plane.style.display = 'none';
-            const boom = document.getElementById('p-boom');
-            boom.style.left = pLeft + '%';
-            boom.style.bottom = pBottom + '%';
-            boom.style.display = 'block';
-
-            document.getElementById('flight-multiplier').style.color = 'var(--neon-red)';
-            btn.innerText = 'MÁY BAY ĐÃ NỔ!';
-            btn.onclick = null;
-            btn.style.borderColor = 'var(--neon-red)';
-            btn.style.color = 'var(--neon-red)';
-
-            setTimeout(() => {
-                window.showResult("CHÁY NỔ", `Máy bay nổ tung ở x${crashPoint.toFixed(2)}.\nMất trắng ${flightBetAmount.toLocaleString()} PP!`, false);
-                resetAirplaneUI();
-            }, 1500);
-        }
-    }, 50);
-};
-
-window.cashOutFlight = async () => {
-    if(!isFlying) return;
-    clearInterval(flightInterval);
-    isFlying = false;
-    const plane = document.getElementById('p-plane');
-    plane.classList.remove('flying');
-
-    const winAmount = Math.floor(flightBetAmount * currentMultiplier);
-    const snap = await get(ref(db, `users/${uid}`));
-    const currentPP = Number(snap.val().pp) || 0;
-    await update(ref(db, `users/${uid}`), { pp: currentPP + winAmount });
-
-    document.getElementById('flight-multiplier').style.color = 'var(--neon-gold)';
-    const btn = document.getElementById('flight-action-btn');
-    btn.innerText = `ĐÃ NHẢY DÙ X${currentMultiplier.toFixed(2)}`;
-    btn.onclick = null;
-    btn.style.borderColor = '#555';
-    btn.style.color = '#555';
-
-    setTimeout(() => {
-        window.showResult("SỐNG SÓT", `Nhảy dù an toàn tại x${currentMultiplier.toFixed(2)}.\nĂn ${(winAmount).toLocaleString()} PP!`, true);
-        resetAirplaneUI();
-    }, 1500);
-};
-
-
-// ==========================================
-// 💰 GOLD MARKET REALTIME (VIP PRO - FIXED LOGIC)
-// ==========================================
-let currentGoldPrice = 50000000;
-let goldChartObj = null;
-window.currentGoldSellPrice = 49900000;
-
-function startGoldMarketLoop() {
-    setInterval(async () => {
-        const snap = await get(ref(db, 'market/gold'));
-        let market = snap.val();
-        if (!market || !market.price) {
-            market = { price: 50000000, oldPrice: 50000000, high24h: 50000000, low24h: 50000000, volumeBuy: 0, volumeSell: 0, history: Array(20).fill(50000000), lastUpdate: 0, statusText: 'MARKET: NORMAL ⚪', statusColor: '#aaa' };
-        }
-        
-        const now = Date.now();
-        if (now - market.lastUpdate > 60000) {
-            let oldPrice = market.price;
-            let changePct = 0;
-            const rand = Math.random();
-            let sText = 'MARKET: NORMAL ⚪';
-            let sColor = '#aaa';
-            
-            if(rand < 0.01) { // CRASH (1%)
-                changePct = -(Math.random() * 0.03 + 0.02);
-                sText = 'MARKET: CRASH 💀'; sColor = 'var(--neon-red)';
-            } else if(rand < 0.02) { // PUMP (1%)
-                changePct = (Math.random() * 0.02 + 0.02);
-                sText = 'MARKET: PUMP 🚀'; sColor = 'var(--neon-gold)';
-            } else if(rand < 0.10) { // DROP/BEARISH (8%)
-                changePct = -(Math.random() * 0.01 + 0.005);
-                sText = 'MARKET: BEARISH 🔴'; sColor = 'var(--neon-red)';
-            } else if(rand < 0.30) { // RISE/BULLISH (20%)
-                changePct = (Math.random() * 0.007 + 0.005);
-                sText = 'MARKET: BULLISH 🟢'; sColor = 'var(--neon-green)';
-            } else { // NORMAL/SIDEWAY (70%)
-                changePct = (Math.random() * 0.006 - 0.003);
-                sText = changePct >= 0 ? 'MARKET: SIDEWAY ↗️' : 'MARKET: SIDEWAY ↘️';
-                sColor = changePct >= 0 ? '#4ade80' : '#f87171';
+    onValue(ref(db, 'users'), snap => { 
+        const us = snap.val() || {}; let arr = []; 
+        let hAdmin = "";
+        for(let id in us) {
+            if(us[id].role === 'STUDENT') {
+                arr.push({id, ...us[id]});
+                hAdmin += `<tr>
+                    <td>${id}</td><td>${us[id].name}</td><td>${us[id].pass}</td><td class="text-gold">${(Number(us[id].pp)||0).toLocaleString()}</td>
+                    <td>
+                        <button onclick="addPP('${id}')" class="btn-mini add">+ PP</button>
+                        <button onclick="subPP('${id}')" class="btn-mini sub">- PP</button>
+                        <button onclick="lockU('${id}', ${!us[id].locked})" class="btn-mini ${us[id].locked?'add':'del'}">${us[id].locked?'MỞ':'KHÓA'}</button>
+                        <button onclick="delU('${id}')" class="btn-mini del">Xóa</button>
+                    </td>
+                </tr>`;
             }
-            
-            let newPrice = Math.floor(oldPrice * (1 + changePct));
-            if(newPrice < 1000000) newPrice = 1000000;
-            
-            let history = market.history || Array(20).fill(oldPrice);
-            history.push(newPrice);
-            if(history.length > 20) history.shift();
-            
-            let high24h = Math.max(market.high24h || newPrice, newPrice);
-            let low24h = Math.min(market.low24h || newPrice, newPrice);
-            
-            await update(ref(db, 'market/gold'), { 
-                price: newPrice, 
-                oldPrice: oldPrice, 
-                high24h: high24h,
-                low24h: low24h,
-                lastUpdate: now, 
-                history: history,
-                statusText: sText,
-                statusColor: sColor,
-                updateTimeString: new Date().toLocaleTimeString('vi-VN')
-            });
         }
-    }, 5000); 
-}
-
-function listenGoldMarket() {
-    onValue(ref(db, 'market/gold'), async (snap) => {
-        const market = snap.val();
-        if (!market) return;
+        if(document.getElementById('admin-users')) document.getElementById('admin-users').innerHTML = hAdmin;
         
-        currentGoldPrice = market.price;
-        const sellPrice = Math.floor(market.price * 0.995); // Lệch 0.5%
-        window.currentGoldSellPrice = sellPrice;
-        
-        const change = market.price - (market.oldPrice || market.price);
-        const isUp = change >= 0;
-        const changePct = ((change / (market.oldPrice || market.price)) * 100).toFixed(2);
-        
-        const priceEl = document.getElementById('gold-current-price');
-        if(priceEl) {
-            priceEl.innerHTML = `MUA: ${market.price.toLocaleString()} <span style="font-size:16px;color:#aaa">PP</span> <br><span style="font-size:24px;color:var(--neon-red)">BÁN: ${sellPrice.toLocaleString()} PP</span>`;
-            
-            const changeStr = (isUp ? '↑ +' : '↓ ') + change.toLocaleString() + ` (${isUp?'+':''}${Math.abs(changePct)}%)`;
-            document.getElementById('gold-price-change').innerText = changeStr;
-            document.getElementById('gold-price-change').style.color = isUp ? 'var(--neon-green)' : 'var(--neon-red)';
-            
-            document.getElementById('gold-time-update').innerText = `⏱ Cập nhật: ${market.updateTimeString || '--:--:--'} (Chu kỳ 60s)`;
-            
-            const statusEl = document.getElementById('gold-market-status');
-            if(statusEl) {
-                statusEl.innerHTML = market.statusText || (isUp ? 'MARKET: BULLISH 🟢' : 'MARKET: BEARISH 🔴');
-                statusEl.style.color = market.statusColor || (isUp ? 'var(--neon-green)' : 'var(--neon-red)');
-            }
-            
-            document.getElementById('gold-high').innerText = (market.high24h || market.price).toLocaleString();
-            document.getElementById('gold-low').innerText = (market.low24h || market.price).toLocaleString();
-            document.getElementById('gold-vol-buy').innerText = (market.volumeBuy || 0).toLocaleString();
-            document.getElementById('gold-vol-sell').innerText = (market.volumeSell || 0).toLocaleString();
-            
-            renderGoldChart(market.history || [], isUp ? '#00ff80' : '#ff003c');
-        }
-
-        const uSnap = await get(ref(db, `users/${uid}`));
-        const u = uSnap.val();
-        if(u) updateMyGoldUI(u);
+        arr.sort((a,b) => (Number(b.pp)||0) - (Number(a.pp)||0)); 
+        let hTop = ""; arr.slice(0, 50).forEach((s) => hTop += `<tr><td>${s.id}</td><td>${s.name}</td><td class="text-gold" style="font-weight:bold; font-size:15px;">${(Number(s.pp)||0).toLocaleString()}</td></tr>`); 
+        if(document.getElementById('top-50-students')) document.getElementById('top-50-students').innerHTML = hTop; 
     });
 
-    onValue(ref(db, 'online'), snap => {
-        const onlines = snap.val() || {};
-        const count = Object.keys(onlines).length;
-        if(document.getElementById('online-count-badge')) {
-            document.getElementById('online-count-badge').innerHTML = `🟢 Online: ${count} người`;
-        }
-    });
-
-    onValue(ref(db, 'users'), snap => {
-        const users = snap.val() || {};
-        let traders = [];
-        for(let k in users) {
-            if(users[k].gold_stats && users[k].gold_stats.totalProfit) {
-                traders.push({ name: users[k].name, profit: users[k].gold_stats.totalProfit });
-            }
-        }
-        traders.sort((a,b) => b.profit - a.profit);
-        let html = '';
-        traders.slice(0,10).forEach(t => {
-            const clss = t.profit >= 0 ? 'text-green' : 'text-red';
-            html += `<tr><td>${t.name}</td><td class="${clss}">${t.profit > 0 ? '+':''}${t.profit.toLocaleString()}</td></tr>`;
+    onValue(ref(db, 'reports'), snap => {
+        const reps = snap.val() || {}; let hStudent = "", hAdmin = "";
+        Object.keys(reps).sort((a,b)=>reps[b].timestamp-reps[a].timestamp).forEach(k => {
+            const r = reps[k];
+            hAdmin += `<tr><td>${r.time}</td><td>${r.senderName} (${r.senderId})</td><td>${r.target||'N/A'}</td><td>${r.reason}</td><td><button onclick="delReport('${k}')" class="btn-mini del">Xong</button></td></tr>`;
+            if (r.senderId === uid) { hStudent += `<tr><td>${r.time}</td><td>${r.target||'Admin'}</td><td>${r.reason}</td></tr>`; }
         });
-        if(document.getElementById('top-gold-traders')) {
-            document.getElementById('top-gold-traders').innerHTML = html || `<tr><td colspan="2" style="text-align:center; color:#888;">Chưa có dữ liệu</td></tr>`;
-        }
+        if(document.getElementById('admin-reports')) document.getElementById('admin-reports').innerHTML = hAdmin || `<tr><td colspan="5" style="text-align:center;">Chưa có thư</td></tr>`;
+        if(document.getElementById('student-inbox')) document.getElementById('student-inbox').innerHTML = hStudent || `<tr><td colspan="3" style="text-align:center;color:#888;">Chưa gửi đơn nào</td></tr>`;
     });
+
+    onValue(ref(db, 'quests'), snap => { let hStudent = ""; let hAdmin = ""; const qs = snap.val() || {}; for(let id in qs) { const q = qs[id]; const dLine = q.deadline && q.deadline !== 'Không có' ? formatDate(q.deadline) : 'Vô thời hạn'; const isExpired = q.deadline && q.deadline !== 'Không có' && new Date() > new Date(q.deadline + "T23:59:59"); hAdmin += `<div style="display:flex;justify-content:space-between;padding:12px;border-bottom:1px solid #333; background: rgba(255,255,255,0.02); margin-bottom:5px; border-radius:8px;"><div><strong class="text-green">${q.title}</strong><br><small style="color:#aaa;">Thưởng: ${q.rewardPP} PP | Hạn: ${dLine}</small></div><button onclick="window.delQ('${id}')" class="btn-mini del" style="height:fit-content; padding:8px 12px;"><i class="fas fa-trash"></i></button></div>`; if(q.status === 'OPEN') { const maxAtt = parseInt(q.maxAttempts) || 1; const att = q.attempts?.[uid] || 0; const canPlay = !isExpired && att < maxAtt; let btnHtml = ''; if (isExpired) btnHtml = `<button class="btn-cyber" style="background:#333; border-color:#555; color:#888; cursor:not-allowed;">[ HẾT HẠN ]</button>`; else if (att >= maxAtt) btnHtml = `<button class="btn-cyber" style="background:rgba(0,255,128,0.1); border-color:var(--neon-green); color:var(--neon-green); cursor:not-allowed;">[ ĐÃ HOÀN THÀNH ]</button>`; else btnHtml = `<button onclick="openQuiz('${id}')" class="btn-cyber glow-pulse" style="border-color:var(--neon-blue); color:var(--neon-blue);">[ LÀM QUIZ NHẬN PP ]</button>`; hStudent += `<div class="mission-item" style="border-left: 4px solid ${canPlay ? 'var(--neon-blue)' : '#555'}; background: rgba(0,0,0,0.5); padding:15px; margin-bottom:10px; border-radius:8px;"><div><h4 style="margin:0; color:${canPlay ? '#fff' : '#888'}"><i class="fas fa-question-circle"></i> ${q.title}</h4><small style="color:#aaa;">Thưởng: <b class="text-gold">+${q.rewardPP} PP</b> | Phạt: <b class="text-red">-${q.penaltyPP} PP</b></small><br><small style="color:#aaa;">Lượt: ${att}/${maxAtt} | Hạn: ${dLine}</small></div><div style="margin-top:10px;">${btnHtml}</div></div>`; } } if(document.getElementById('admin-quest-list')) document.getElementById('admin-quest-list').innerHTML = hAdmin || '<p style="color:#888; text-align:center;">Chưa có Quiz nào!</p>'; if(document.getElementById('student-mission-list')) document.getElementById('student-mission-list').innerHTML = hStudent || '<p style="color:#888; text-align:center;">Hôm nay không có bài Quiz nào!</p>'; });
+    onValue(ref(db, 'transactions'), snap => { const txs = snap.val() || {}; let arr = Object.keys(txs).map(k => ({id:k, ...txs[k]})).sort((a,b) => b.timestamp - a.timestamp); let hStudent = ""; arr.forEach(tx => { const amtStr = `<strong class="text-gold">${tx.amount.toLocaleString()} PP</strong>`; if(tx.sender === uid || tx.receiver === uid) { const isSent = tx.sender === uid; const typeHtml = isSent ? `<span style="color:#ff4500;">Chuyển đi <i class="fas fa-arrow-right"></i></span>` : `<span style="color:#4ade80;">Nhận về <i class="fas fa-arrow-left"></i></span>`; const partner = isSent ? `${tx.receiverName} (${tx.receiver})` : `${tx.senderName} (${tx.sender})`; hStudent += `<tr><td>${tx.time}</td><td>${typeHtml}</td><td>${partner}</td><td>${amtStr}</td><td>${tx.message}</td></tr>`; } }); if(document.getElementById('student-transactions')) document.getElementById('student-transactions').innerHTML = hStudent || `<tr><td colspan="5" style="text-align:center; color:#888;">Chưa có giao dịch nào</td></tr>`; });
+    onValue(ref(db, 'game_logs'), snap => { const logs = snap.val() || {}; let arr = Object.values(logs).sort((a,b) => b.timestamp - a.timestamp).slice(0, 150); let h = ""; arr.forEach(l => { const clss = l.pnl > 0 ? 'text-green' : (l.pnl < 0 ? 'text-red' : 'text-gold'); h += `<tr><td>${l.uid}</td><td>${l.name}</td><td>${l.game}</td><td>${l.bet.toLocaleString()}</td><td class="${clss}" style="font-weight:bold;">${l.pnl > 0 ? '+':''}${l.pnl.toLocaleString()}</td><td>${l.time}</td></tr>`; }); if(document.getElementById('admin-game-logs')) document.getElementById('admin-game-logs').innerHTML = h || `<tr><td colspan="6" style="text-align:center; color:#888;">Chưa có dữ liệu</td></tr>`; });
+    
+    setupTaiXiuDrag(); startGoldMarketLoop(); listenGoldMarket(); listenTienLenRooms(); listenBlackjackRooms(); listenRpsRooms();
 }
 
-window.goldChangeTimeframe = (tf) => {
-    ['1m','5m','15m','ALL'].forEach(t => {
-        const b = document.getElementById(`gold-tf-${t}`);
-        if(b) { b.style.color = (t===tf) ? '#fff' : '#555'; b.style.borderColor = (t===tf) ? 'var(--neon-gold)' : '#333'; }
-    });
+window.delReport = (id) => { remove(ref(db, `reports/${id}`)); };
+window.transferPP = async () => { const tUid = document.getElementById('transfer-uid').value.trim(), amt = parseInt(document.getElementById('transfer-amount').value), msg = document.getElementById('transfer-msg').value.trim() || 'Không có lời nhắn'; if(!tUid || isNaN(amt) || amt <= 0) return alert("Thông cực kỳ không hợp lệ!"); if(tUid === uid) return alert("Không tự chuyển cho mình được!"); const mySnap = await get(ref(db, `users/${uid}`)); const myData = mySnap.val(); if((Number(myData.pp)||0) < amt) return alert("Không đủ PP!"); const targetSnap = await get(ref(db, `users/${tUid}`)); if(!targetSnap.exists()) return alert("UID Người nhận không tồn tại!"); const targetData = targetSnap.val(); await update(ref(db, `users/${uid}`), { pp: (Number(myData.pp)||0) - amt }); await update(ref(db, `users/${tUid}`), { pp: (Number(targetData.pp)||0) + amt }); await set(ref(db, `transactions/TX_${Date.now()}`), { sender: uid, senderName: myData.name, receiver: tUid, receiverName: targetData.name, amount: amt, message: msg, time: new Date().toLocaleString('vi-VN'), timestamp: Date.now() }); alert(`Đã chuyển ${amt.toLocaleString()} PP!`); document.getElementById('transfer-amount').value=''; document.getElementById('transfer-msg').value=''; };
+function renderStudentGrades(u) { const tb = document.getElementById('student-grades'); if(!tb) return; tb.innerHTML = ''; if(!u.academic) return; Object.keys(u.academic).sort().forEach(tk => { tb.innerHTML += `<tr class="term-group-header"><td colspan="6">${tk}</td></tr>`; for(let sk in u.academic[tk]) { const s = u.academic[tk][sk]; tb.innerHTML += `<tr><td>${s.name}</td><td>${s.bth}</td><td>${s.gk}</td><td>${s.ck}</td><td>${s.final}</td><td class="text-gold">${s.grade}</td></tr>`; } }); }
+window.adminCreateUser=async()=>{const id=document.getElementById('add-uid').value.trim(),n=document.getElementById('add-name').value.trim(),p=document.getElementById('add-pass').value.trim()||"123",pp=parseInt(document.getElementById('add-pp').value)||1000;if(!id||!n)return;await set(ref(db,`users/${id}`),{name:n,classKey:"Y1_A",class:"1-A",year:1,sem:1,role:"STUDENT",pass:p,pp:pp,avatar:"",stats:[50,50,50,50,50],locked:false});alert("Xong!");};
+window.lockU=(id,st)=>update(ref(db,`users/${id}`),{locked:st});window.addPP=async(id)=>{const a=prompt("CỘNG PP:");if(a&&!isNaN(a)){const s=await get(ref(db,`users/${id}`));update(ref(db,`users/${id}`),{pp:(Number(s.val().pp)||0)+parseInt(a)});}};window.subPP=async(id)=>{const a=prompt("TRỪ PP:");if(a&&!isNaN(a)){const s=await get(ref(db,`users/${id}`));update(ref(db,`users/${id}`),{pp:Math.max(0,(Number(s.val().pp)||0)-parseInt(a))});}};window.upU=(id,k,v)=>update(ref(db,`users/${id}`),{[k]:v});window.delU=id=>{if(confirm("Xóa User này?"))remove(ref(db,`users/${id}`));};window.changeAvatar=()=>{const u=prompt("Link ảnh:");if(u)update(ref(db,`users/${uid}`),{avatar:u});};window.changeTeacherName=()=>{const n=prompt("Tên:");if(n)update(ref(db,`users/${uid}`),{name:n});};
+window.adminCreateQuest=async()=>{const t=document.getElementById('q-title').value,q=document.getElementById('q-question').value,a=document.getElementById('q-optA').value,b=document.getElementById('q-optB').value,c=document.getElementById('q-correct').value,pp=parseInt(document.getElementById('q-pp').value)||0,pn=parseInt(document.getElementById('q-penalty').value)||0,l=parseInt(document.getElementById('q-max-attempts').value)||1,tm=parseInt(document.getElementById('q-time').value)||0,dl=document.getElementById('q-deadline').value||'Không có';if(!t||!q||!a||!b)return alert("Điền ĐẦY ĐỦ!");await set(ref(db,`quests/Q_${Date.now()}`),{title:t,question:q,optA:a,optB:b,correctOpt:c,rewardPP:pp,penaltyPP:pn,maxAttempts:l,timeLimit:tm,deadline:dl,status:'OPEN'});alert("ĐĂNG QUIZ XONG!");}; window.delQ=id=>{if(confirm("Xóa Quiz?"))remove(ref(db,`quests/${id}`));};
+window.openQuiz=async id=>{const s=await get(ref(db,`quests/${id}`));const q=s.val();if(!q)return;activeQuizId=id;document.getElementById('quiz-title').innerText=q.title;document.getElementById('quiz-question').innerText=q.question;document.getElementById('quiz-optA').innerText=q.optA;document.getElementById('quiz-optB').innerText=q.optB;document.getElementById('quiz-modal').style.display='flex';if(q.timeLimit>0){let tl=q.timeLimit;document.getElementById('quiz-timer').innerText=`🕒 ${tl}s`;quizTimerInterval=setInterval(()=>{tl--;document.getElementById('quiz-timer').innerText=`🕒 ${tl}s`;if(tl<=0)window.submitQuiz('TIMEOUT');},1000);}else{document.getElementById('quiz-timer').innerText='';}};
+window.submitQuiz=async opt=>{if(quizTimerInterval)clearInterval(quizTimerInterval);const s=await get(ref(db,`quests/${activeQuizId}`));const q=s.val();if(!q)return document.getElementById('quiz-modal').style.display='none';const att=q.attempts?.[uid]||0;await update(ref(db,`quests/${activeQuizId}/attempts`),{[uid]:att+1});const us=await get(ref(db,`users/${uid}`));const cpp=Number(us.val().pp)||0;if(opt==='TIMEOUT'){await update(ref(db,`users/${uid}`),{pp:Math.max(0,cpp-q.penaltyPP)});window.showResult("HẾT GIỜ!",`Bị phạt ${q.penaltyPP} PP!`,false);}else if(opt===q.correctOpt){await update(ref(db,`users/${uid}`),{pp:cpp+q.rewardPP});window.showResult("ĐÚNG RỒI!",`Cộng ${q.rewardPP} PP!`,true);}else{await update(ref(db,`users/${uid}`),{pp:Math.max(0,cpp-q.penaltyPP)});window.showResult("SAI BÉT!",`Phạt ${q.penaltyPP} PP!`,false);}document.getElementById('quiz-modal').style.display='none';}; window.closeQuizModal=()=>{if(quizTimerInterval)clearInterval(quizTimerInterval);document.getElementById('quiz-modal').style.display='none';};
+
+// 💰 SÀN GIAO DỊCH VÀNG VIP (BITCOIN STYLE 60s)
+let currentGoldPrice=50000000; let goldChartObj=null; window.currentGoldSellPrice=49825000; let lastGoldTradeTime=0;
+window.sendGoldChat=async()=>{const i=document.getElementById('gold-chat-input');const m=i.value.trim();if(!m)return;i.value='';const un=localStorage.getItem('uname')||'Ẩn danh';await push(ref(db,'market/chat'),{uid:uid,name:un,msg:m,time:new Date().toLocaleTimeString('vi-VN'),timestamp:Date.now()});};
+function startGoldMarketLoop(){ setInterval(async()=>{ const snap=await get(ref(db,'market/gold'));let m=snap.val(); if(!m||!m.price){m={price:50000000,oldPrice:50000000,high24h:50000000,low24h:50000000,volumeBuy:0,volumeSell:0,history:Array(60).fill(50000000),lastUpdate:0,statusText:'MARKET: NORMAL ⚪',statusColor:'#aaa'};} const now=Date.now(); if(now-m.lastUpdate>=60000 || m.lastUpdate === 0){ let op=m.price; let r=Math.random(); let cP=0; let sT='SIDEWAY ⚪'; let sC='#aaa'; if (r < 0.65) { cP = (Math.random() * 0.5 - 0.25) / 100; sT='SIDEWAY ⚪'; sC='#aaa'; } else if (r < 0.80) { cP = (Math.random() * 0.75 + 0.25) / 100; sT='TĂNG 🟢'; sC='#4ade80'; } else if (r < 0.92) { cP = -(Math.random() * 0.75 + 0.25) / 100; sT='GIẢM 🔴'; sC='#f87171'; } else if (r < 0.97) { cP = (Math.random() * 1.5 + 1.0) / 100; sT='PUMP 🚀'; sC='var(--neon-green)'; } else if (r < 0.995) { cP = -(Math.random() * 2.0 + 1.0) / 100; sT='CRASH 💀'; sC='var(--neon-red)'; } else { if (Math.random() < 0.5) { cP = 0.04; sT='MEGA PUMP 🚀🚀'; sC='var(--neon-gold)'; } else { cP = -0.05; sT='MEGA CRASH 💥'; sC='#8b0000'; } } let nP=Math.floor(op*(1+cP)); if(nP<10000000) nP=10000000; if(nP>200000000) nP=200000000; let hs=m.history||Array(60).fill(op); hs.push(nP); if(hs.length>60) hs.shift(); await update(ref(db,'market/gold'),{price:nP,oldPrice:op,high24h:Math.max(m.high24h||nP,nP),low24h:Math.min(m.low24h||nP,nP),lastUpdate:now,history:hs,statusText:sT,statusColor:sC,updateTimeString:new Date().toLocaleTimeString('vi-VN')}); } },2000); }
+function listenGoldMarket(){ onValue(ref(db,'market/gold'),async(snap)=>{ const m=snap.val();if(!m)return; currentGoldPrice=Math.floor(m.price * 1.0035); window.currentGoldSellPrice=Math.floor(m.price * 0.9965); const chg=m.price-(m.oldPrice||m.price); const isUp=chg>=0; const cP=((chg/(m.oldPrice||m.price))*100).toFixed(2); const pE=document.getElementById('gold-current-price'); if(pE){ pE.innerHTML=`MUA: ${currentGoldPrice.toLocaleString()} <span style="font-size:16px;color:#aaa">PP</span> <br><span style="font-size:24px;color:var(--neon-red)">BÁN: ${window.currentGoldSellPrice.toLocaleString()} PP</span>`; document.getElementById('gold-price-change').innerText=(isUp?'↑ +':'↓ ')+Math.abs(chg).toLocaleString()+` (${isUp?'+':''}${Math.abs(cP)}%)`; document.getElementById('gold-price-change').style.color=isUp?'var(--neon-green)':'var(--neon-red)'; document.getElementById('gold-time-update').innerText=`⏱ Cập nhật: ${m.updateTimeString||'--:--:--'} (Chu kỳ 60s)`; const sE=document.getElementById('gold-market-status'); if(sE){sE.innerHTML=m.statusText||(isUp?'MARKET: BULLISH 🟢':'MARKET: BEARISH 🔴');sE.style.color=m.statusColor||(isUp?'var(--neon-green)':'var(--neon-red)');} let vB = (Math.random() * 20 + 40).toFixed(1); let vS = (100 - vB).toFixed(1); document.getElementById('gold-vol-buy').innerText = vB + '%'; document.getElementById('gold-vol-sell').innerText = vS + '%'; document.getElementById('gold-bar-buy').style.width = vB + '%'; document.getElementById('gold-bar-sell').style.width = vS + '%'; document.getElementById('gold-low-24h').innerText = (m.low24h||m.price).toLocaleString(); document.getElementById('gold-high-24h').innerText = (m.high24h||m.price).toLocaleString(); let lbls=[]; let now=Date.now(); let hs=m.history||[]; for(let i=0;i<hs.length;i++){ let d=new Date(now-(hs.length-1-i)*60000); lbls.push(d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})); } renderGoldChart(hs,lbls,isUp?'#00ff80':'#ff003c'); } const uSnap=await get(ref(db,`users/${uid}`)); const u=uSnap.val(); if(u) updateMyGoldUI(u); }); onValue(ref(db,'market/chat'),snap=>{ const cs=snap.val()||{}; const cArr=Object.values(cs).sort((a,b)=>a.timestamp-b.timestamp).slice(-50); let h=''; cArr.forEach(c=>{ const cl=(c.uid===uid)?'var(--neon-green)':'var(--neon-blue)'; h+=`<div style="margin-bottom: 8px; line-height: 1.4;"><span style="color:#777; font-size: 11px;">[${c.time}]</span> <b style="color:${cl}">${c.name}:</b> <span style="color:#eee">${c.msg}</span></div>`; }); const box=document.getElementById('gold-chat-box'); if(box){box.innerHTML=h;box.scrollTop=box.scrollHeight;} }); }
+function renderGoldChart(hs,lbls,color){const c=document.getElementById('goldRealtimeChart');if(!c)return;const ctx=c.getContext('2d');if(goldChartObj){goldChartObj.data.labels=lbls;goldChartObj.data.datasets[0].data=hs;goldChartObj.data.datasets[0].borderColor=color;goldChartObj.update();}else{goldChartObj=new Chart(ctx,{type:'line',data:{labels:lbls,datasets:[{label:'Gold Price',data:hs,borderColor:color,borderWidth:2,tension:0.2,pointRadius:0}]},options:{animation:false,scales:{x:{display:true,ticks:{color:'#555',maxTicksLimit:6}},y:{position:'right',grid:{color:'#222'}}},plugins:{legend:{display:false}},maintainAspectRatio:false}});}}
+function updateMyGoldUI(u){if(!document.getElementById('gold-my-amount'))return;if(u.gold&&u.gold.amount>0){document.getElementById('gold-my-amount').innerText=u.gold.amount.toFixed(2)+' GOLD';document.getElementById('gold-my-avg').innerText=Math.floor(u.gold.avgPrice).toLocaleString()+' PP';const cv=u.gold.amount*window.currentGoldSellPrice;const iv=u.gold.amount*u.gold.avgPrice;const pnl=Math.floor(cv-iv);const pct=(pnl/iv)*100;const el=document.getElementById('gold-my-pnL');el.innerText=(pnl>=0?'+':'')+pnl.toLocaleString()+` PP (${pct>=0?'+':''}${Math.abs(pct).toFixed(2)}%)`;el.style.color=pnl>=0?'var(--neon-green)':'var(--neon-red)';}else{document.getElementById('gold-my-amount').innerText='0 GOLD';document.getElementById('gold-my-avg').innerText='0 PP';document.getElementById('gold-my-pnL').innerText='0 PP';document.getElementById('gold-my-pnL').style.color='#fff';}}
+window.buyGold=async()=>{ if(Date.now()-lastGoldTradeTime<3000)return window.showResult("CHỜ ĐÃ","Vui lòng chờ 3s để chống Farm!",false); const a=parseFloat(document.getElementById('gold-buy-amount').value);if(isNaN(a)||a<0.01)return window.showResult("LỖI","Mua tối thiểu 0.01 GOLD!",false); const uS=await get(ref(db,`users/${uid}`));const u=uS.val();const cPP=Number(u.pp)||0;const rq=Math.floor(a*currentGoldPrice);if(cPP<rq)return window.showResult("NGHÈO",`Cần ${rq.toLocaleString()} PP!`,false); const cmg=u.gold||{amount:0,avgPrice:0};const nA=cmg.amount+a;const nAvg=((cmg.amount*cmg.avgPrice)+rq)/nA; await update(ref(db,`users/${uid}`),{pp:cPP-rq,gold:{amount:nA,avgPrice:nAvg}}); lastGoldTradeTime=Date.now(); document.getElementById('gold-buy-amount').value=''; window.logGame(uid,u.name,"Mua Vàng",rq,0,"Mua thành công"); window.showResult("MUA VÀNG",`Đã mua ${a.toLocaleString()} GOLD\nPhí: ${rq.toLocaleString()} PP`,true); };
+window.sellGold=async()=>{ if(Date.now()-lastGoldTradeTime<3000)return window.showResult("CHỜ ĐÃ","Vui lòng chờ 3s để chống Farm!",false); const a=parseFloat(document.getElementById('gold-sell-amount').value);if(isNaN(a)||a<0.01)return window.showResult("LỖI","Bán tối thiểu 0.01 GOLD!",false); const uS=await get(ref(db,`users/${uid}`));const u=uS.val(); if(!u.gold||u.gold.amount<a)return window.showResult("LỖI","Không đủ vàng!",false); const sv=Math.floor(a*window.currentGoldSellPrice);const p=sv-Math.floor(a*u.gold.avgPrice);const na=u.gold.amount-a; if(na>0.000001){await update(ref(db,`users/${uid}`),{pp:(Number(u.pp)||0)+sv,gold:{amount:na,avgPrice:u.gold.avgPrice}});}else{await update(ref(db,`users/${uid}`),{pp:(Number(u.pp)||0)+sv});await remove(ref(db,`users/${uid}/gold`));} await update(ref(db,`users/${uid}/gold_stats`),{totalProfit:((u.gold_stats&&u.gold_stats.totalProfit)?u.gold_stats.totalProfit:0)+p}); lastGoldTradeTime=Date.now(); document.getElementById('gold-sell-amount').value=''; window.logGame(uid,u.name,"Bán Vàng",Math.floor(a*u.gold.avgPrice),p,p>=0?"Chốt Lời":"Cắt Lỗ"); window.showResult("BÁN VÀNG",`Thu về: ${sv.toLocaleString()} PP\nLãi: ${p>=0?'+':''}${p.toLocaleString()} PP!`,p>=0); };
+window.fillAllGold=async()=>{const s=await get(ref(db,`users/${uid}`));if(s.val()&&s.val().gold&&s.val().gold.amount>0)document.getElementById('gold-sell-amount').value=s.val().gold.amount.toFixed(2);};
+
+// 🎲 TÀI XỈU NẶN BÁT (CÓ HIỆU ỨNG XÓC)
+window.playTaiXiu=async(ch)=>{ const b=prompt(`[TÀI XỈU VIP]\nBạn đang chọn: ${ch}\nNhập PP cược:`);if(!b)return; const bt=parseInt(b);if(isNaN(bt)||bt<=0)return alert("Lỗi cược!"); const s=await get(ref(db,`users/${uid}`));if((Number(s.val().pp)||0)<bt)return alert("Không đủ PP!"); await update(ref(db,`users/${uid}`),{pp:(Number(s.val().pp)||0)-bt}); window.txBet=bt; window.txChoice=ch; window.isTxRevealed=false; window.txD1=Math.floor(Math.random()*6)+1; window.txD2=Math.floor(Math.random()*6)+1; window.txD3=Math.floor(Math.random()*6)+1; document.getElementById('taixiu-modal').style.display='flex'; const cup = document.getElementById('taixiu-cup'); const plate = document.getElementById('taixiu-plate'); const dices = document.getElementById('taixiu-dices'); const msg = document.getElementById('tx-shaking-msg'); cup.style.display='block'; cup.style.transition='none'; cup.style.transform='translate(0, 0) rotate(0deg)'; dices.style.display = 'none'; cup.style.pointerEvents = 'none'; document.getElementById('btn-tx-instant').style.display = 'none'; msg.style.display = 'block'; plate.classList.add('shake-anim'); cup.classList.add('shake-anim'); setTimeout(() => { plate.classList.remove('shake-anim'); cup.classList.remove('shake-anim'); msg.style.display = 'none'; const dc=['','fa-dice-one','fa-dice-two','fa-dice-three','fa-dice-four','fa-dice-five','fa-dice-six']; document.getElementById('tx-d1').className=`fas ${dc[window.txD1]} tx-dice red`; document.getElementById('tx-d2').className=`fas ${dc[window.txD2]} tx-dice black`; document.getElementById('tx-d3').className=`fas ${dc[window.txD3]} tx-dice red`; dices.style.display = 'flex'; cup.style.pointerEvents = 'auto'; document.getElementById('btn-tx-instant').style.display = 'block'; }, 2000); };
+window.finishTaiXiuReveal=async()=>{ if(window.isTxRevealed)return; window.isTxRevealed=true; document.getElementById('taixiu-cup').style.display='none'; const t=window.txD1+window.txD2+window.txD3; const iT=t>=11; const iW=(window.txChoice==='TAI'&&iT)||(window.txChoice==='XIU'&&!iT); const iB=window.txD1===window.txD2&&window.txD2===window.txD3; let po=0; let m=`Kết quả: ${window.txD1}-${window.txD2}-${window.txD3} (Tổng: ${t})\n`; let ti=""; if(iB){m+="BÃO!!! Cái húp.";ti="BÃO";}else if(iW){po=window.txBet*2;m+=`Thắng! Ăn ${window.txBet.toLocaleString()} PP.`;ti="THẮNG";}else{m+=`Thua! Mất ${window.txBet.toLocaleString()} PP!`;ti="THUA";} if(po>0){const s=await get(ref(db,`users/${uid}`));await update(ref(db,`users/${uid}`),{pp:(Number(s.val().pp)||0)+po});} window.logGame(uid,localStorage.getItem('uname'),"Tài Xỉu",window.txBet,po-window.txBet,iB?"Bão":iW?"Thắng":"Thua"); setTimeout(()=>{ document.getElementById('taixiu-modal').style.display='none'; window.showResult(ti,m,iW&&!iB); }, 2000); };
+window.openTaiXiuInstant=()=>{ if(window.isTxRevealed)return; const c=document.getElementById('taixiu-cup'); c.style.transition='transform 0.5s'; c.classList.add('shake-anim'); setTimeout(()=>{ c.classList.remove('shake-anim'); window.finishTaiXiuReveal(); }, 800); };
+
+
+// ⚽ BÓNG ĐÁ PENALTY SHOOTOUT (FIX: 5 Lượt Sút, Vào 3 Thắng, Tốc độ Nhanh)
+window.fbShots = 5; window.fbScored = 0; window.fbCurrentShot = 1; window.fbCursorDir = 4; window.fbCursorPos = 50; window.fbInterval = null; window.isFbShooting = false;
+window.openFootballGame=()=>{ 
+    document.getElementById('football-modal').style.display='flex'; document.getElementById('fb-controls').style.display='flex'; document.getElementById('fb-actions').style.display='flex'; document.getElementById('fb-btn-start').style.display='block'; document.getElementById('fb-btn-shoot').style.display='none'; 
+    document.getElementById('fb-commentary').innerText="Nhập tiền cược toàn bộ kèo sút 5 trái!"; 
+    document.getElementById('p-gk').style.left='50%'; document.getElementById('p-gk').style.top='20%'; document.getElementById('fb-ball').style.left='50%'; document.getElementById('fb-ball').style.top='85%'; document.getElementById('fb-ball').style.transform='translate(-50%, -50%) scale(1)'; 
+    document.getElementById('fb-bet').value=''; document.getElementById('fb-bet').disabled=false; 
+    window.fbScored = 0; window.fbShots = 5; window.fbCurrentShot = 1;
+    document.getElementById('fb-streak').innerText = `Vào: 0/5`; document.getElementById('fb-lives').innerText = `Lượt sút: 1/5`; 
+};
+window.closeFootballGame=()=>{ if(window.fbInterval) clearInterval(window.fbInterval); window.fbInterval=null; document.getElementById('football-modal').style.display='none'; };
+
+window.startPenalty = async () => { 
+    const b = parseInt(document.getElementById('fb-bet').value); if(isNaN(b)||b<=0) return window.showResult("LỖI","Cược không hợp lệ!",false); 
+    const s = await get(ref(db,`users/${uid}`)); const cPP = Number(s.val().pp)||0; if(cPP < b) return window.showResult("NGHÈO","Không đủ PP!",false); 
+    await update(ref(db,`users/${uid}`),{pp: cPP - b}); 
+    window.fbBet = b; window.fbShots = 5; window.fbScored = 0; window.fbCurrentShot = 1;
+    document.getElementById('fb-bet').disabled = true; document.getElementById('fb-btn-start').style.display = 'none'; document.getElementById('fb-btn-shoot').style.display = 'block'; 
+    document.getElementById('fb-streak').innerText = `Vào: 0/5`; document.getElementById('fb-lives').innerText = `Lượt sút: 1/5`; 
+    document.getElementById('fb-commentary').innerText = "Canh thanh chạy (RẤT NHANH) và bấm SÚT NGAY!"; 
+    resetPenaltyTurn(); 
 };
 
-function renderGoldChart(history, color) {
-    const canvas = document.getElementById('goldRealtimeChart');
-    if(!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if(goldChartObj) {
-        goldChartObj.data.labels = Array(history.length).fill('');
-        goldChartObj.data.datasets[0].data = history;
-        goldChartObj.data.datasets[0].borderColor = color;
-        goldChartObj.update();
+function resetPenaltyTurn() { 
+    window.isFbShooting = false; 
+    document.getElementById('p-gk').style.left='50%'; document.getElementById('p-gk').style.top='20%'; 
+    document.getElementById('fb-ball').style.left='50%'; document.getElementById('fb-ball').style.top='85%'; document.getElementById('fb-ball').style.transform='translate(-50%, -50%) scale(1)'; 
+    document.getElementById('fb-btn-shoot').style.display = 'block'; 
+    if(window.fbInterval) clearInterval(window.fbInterval); 
+    window.fbCursorPos = 0; window.fbCursorDir = 4; // Tăng tốc độ x2 (từ 2 lên 4)
+    window.fbInterval = setInterval(() => { 
+        window.fbCursorPos += window.fbCursorDir; 
+        if(window.fbCursorPos >= 100) { window.fbCursorPos = 100; window.fbCursorDir = -4; } 
+        if(window.fbCursorPos <= 0) { window.fbCursorPos = 0; window.fbCursorDir = 4; } 
+        document.getElementById('fb-power-cursor').style.left = window.fbCursorPos + '%'; 
+    }, 20); 
+}
+
+window.shootPenalty = async () => { 
+    if(window.isFbShooting) return; 
+    window.isFbShooting = true; clearInterval(window.fbInterval); window.fbInterval = null; 
+    document.getElementById('fb-btn-shoot').style.display = 'none'; 
+    
+    let pow = window.fbCursorPos; let gk = document.getElementById('p-gk'); let ball = document.getElementById('fb-ball'); let cmt = document.getElementById('fb-commentary'); 
+    let isCritical = false; let shootDirX = 50; let shootDirY = 85; 
+    
+    // Thủ môn thế giới: Phán đoán hướng sút thông minh hơn nhưng vẫn để lọt góc chết
+    let gkDirX = 50; let gkRand = Math.random();
+    
+    if(pow < 20) shootDirX = 10; else if(pow < 40) shootDirX = 30; else if(pow < 60) shootDirX = 50; else if(pow < 80) shootDirX = 70; else shootDirX = 90; 
+    shootDirY = 15; 
+    
+    if (Math.abs(pow - 50) < 6) { // Góc chết giữa (panenka hoàn hảo)
+        isCritical = true; shootDirX = 50; shootDirY = 5; 
+        gkDirX = gkRand > 0.5 ? 20 : 80; // Thủ môn thế giới bị đánh lừa bay sang 2 bên
+    } else if (pow < 15 || pow > 85) { // Góc chết 2 biên
+        isCritical = true; shootDirX = pow < 15 ? 5 : 95; shootDirY = 5;
+        gkDirX = pow < 15 ? 15 : 85; // Thủ môn bay không tới góc quá gắt
     } else {
-        goldChartObj = new Chart(ctx, {
-            type: 'line',
-            data: { labels: Array(history.length).fill(''), datasets: [{ label: 'Gold Price', data: history, borderColor: color, borderWidth: 2, tension: 0.2, pointRadius: 0 }] },
-            options: { animation: false, scales: { x: { display: false }, y: { position: 'right', grid: { color: '#222' } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false }
-        });
+        // Thủ môn thế giới có 70% bắt đúng hướng nếu không sút góc chết
+        if(gkRand < 0.7) { gkDirX = shootDirX; } else { gkDirX = gkRand < 0.85 ? shootDirX - 20 : shootDirX + 20; }
     }
-}
-
-function updateMyGoldUI(u) {
-    if(!document.getElementById('gold-my-amount')) return;
-    if (u.gold && u.gold.amount > 0) {
-        document.getElementById('gold-my-amount').innerText = u.gold.amount.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4}) + ' GOLD';
-        document.getElementById('gold-my-avg').innerText = Math.floor(u.gold.avgPrice).toLocaleString() + ' PP';
+    
+    let isMiss = (pow < 3 || pow > 97); // Gắt quá thì bắn chim
+    
+    ball.style.left = shootDirX + '%'; ball.style.top = isMiss ? '-10%' : shootDirY + '%'; ball.style.transform = 'translate(-50%, -50%) scale(0.6)'; 
+    setTimeout(() => { gk.style.left = gkDirX + '%'; }, 100); 
+    
+    setTimeout(() => { 
+        if(isMiss) { 
+            cmt.innerHTML = `<span style="color:#ffcc00;">BẮN CHIM!!! Lực quá căng.</span>`; 
+        } else if (isCritical && Math.abs(shootDirX - gkDirX) > 10) { 
+            cmt.innerHTML = `<span class="text-blue">🔥 SIÊU PHẨM GÓC CHẾT!!! Không thể cản phá.</span>`; window.fbScored++; 
+        } else if (Math.abs(shootDirX - gkDirX) < 18 && !isCritical) { 
+            cmt.innerHTML = `<span class="text-red">CẢN PHÁ XUẤT THẦN!!! Thủ môn thế giới đã đổ người đúng hướng.</span>`; 
+            ball.style.left = (gkDirX + 5) + '%'; ball.style.top = '40%'; ball.style.transform = 'translate(-50%, -50%) scale(0.8)'; 
+        } else { 
+            cmt.innerHTML = `<span class="text-green">VÀOOOOO!!! Bàn thắng gọn gàng.</span>`; window.fbScored++; 
+        } 
         
-        const currentVal = u.gold.amount * window.currentGoldSellPrice;
-        const invested = u.gold.amount * u.gold.avgPrice;
-        const pnl = Math.floor(currentVal - invested);
-        const pnlPct = (pnl / invested) * 100;
+        document.getElementById('fb-streak').innerText = `Vào: ${window.fbScored}/5`; 
+        window.fbShots--; 
         
-        const pnlEl = document.getElementById('gold-my-pnL');
-        pnlEl.innerText = (pnl >= 0 ? '+' : '') + pnl.toLocaleString() + ` PP (${pnlPct >= 0 ? '+' : ''}${Math.abs(pnlPct).toFixed(2)}%)`;
-        pnlEl.style.color = pnl >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
-        pnlEl.style.textShadow = pnl >= 0 ? '0 0 10px var(--neon-green)' : '0 0 10px var(--neon-red)';
-    } else {
-        document.getElementById('gold-my-amount').innerText = '0.0000 GOLD';
-        document.getElementById('gold-my-avg').innerText = '0 PP';
-        document.getElementById('gold-my-pnL').innerText = '0 PP';
-        document.getElementById('gold-my-pnL').style.color = '#fff';
-        document.getElementById('gold-my-pnL').style.textShadow = 'none';
-    }
-}
-
-window.buyGold = async () => {
-    const goldAmtStr = document.getElementById('gold-buy-amount').value;
-    const goldAmt = parseFloat(goldAmtStr);
-    if (isNaN(goldAmt) || goldAmt <= 0) return window.showResult("LỖI", "Số lượng Vàng không hợp lệ!", false);
-    
-    const uSnap = await get(ref(db, `users/${uid}`));
-    const u = uSnap.val();
-    const currentPP = Number(u.pp) || 0;
-    
-    const ppRequired = Math.floor(goldAmt * currentGoldPrice);
-    if (currentPP < ppRequired) return window.showResult("NGHÈO", `Bạn cần ${ppRequired.toLocaleString()} PP để mua ${goldAmt} GOLD!`, false);
-
-    const mSnap = await get(ref(db, 'market/gold'));
-    const market = mSnap.val();
-    if(!market) return;
-
-    const currentMyGold = u.gold || { amount: 0, avgPrice: 0 };
-    const totalValueBefore = currentMyGold.amount * currentMyGold.avgPrice;
-    const totalValueAfter = totalValueBefore + ppRequired;
-    const newAmount = currentMyGold.amount + goldAmt;
-    const newAvgPrice = totalValueAfter / newAmount;
-
-    await update(ref(db, `users/${uid}`), { pp: currentPP - ppRequired, gold: { amount: newAmount, avgPrice: newAvgPrice } });
-    
-    await update(ref(db, 'market/gold'), { volumeBuy: (market.volumeBuy || 0) + ppRequired });
-
-    document.getElementById('gold-buy-amount').value = '';
-    window.showResult("MUA VÀNG", `Đã mua thành công ${goldAmt.toLocaleString(undefined, {maximumFractionDigits: 4})} GOLD\nTổng chi phí: ${ppRequired.toLocaleString()} PP\nGiá mua: ${currentGoldPrice.toLocaleString()} PP/GOLD`, true);
-};
-
-window.sellGold = async () => {
-    const goldAmtStr = document.getElementById('gold-sell-amount').value;
-    const goldAmt = parseFloat(goldAmtStr);
-    if (isNaN(goldAmt) || goldAmt <= 0) return window.showResult("LỖI", "Số lượng Vàng không hợp lệ!", false);
-
-    const uSnap = await get(ref(db, `users/${uid}`));
-    const u = uSnap.val();
-    
-    if (!u.gold || u.gold.amount < goldAmt) {
-        window.showResult("LỖI", `Bạn chỉ đang giữ ${u.gold ? u.gold.amount.toLocaleString(undefined, {maximumFractionDigits: 4}) : 0} GOLD!`, false);
-        return;
-    }
-
-    const sellValue = Math.floor(goldAmt * window.currentGoldSellPrice);
-    const profit = sellValue - Math.floor(goldAmt * u.gold.avgPrice);
-    const currentPP = Number(u.pp) || 0;
-
-    const newAmount = u.gold.amount - goldAmt;
-    
-    if (newAmount > 0.000001) {
-        await update(ref(db, `users/${uid}`), { pp: currentPP + sellValue, gold: { amount: newAmount, avgPrice: u.gold.avgPrice } });
-    } else {
-        await update(ref(db, `users/${uid}`), { pp: currentPP + sellValue });
-        await remove(ref(db, `users/${uid}/gold`));
-    }
-
-    const currentTotalProfit = (u.gold_stats && u.gold_stats.totalProfit) ? u.gold_stats.totalProfit : 0;
-    await update(ref(db, `users/${uid}/gold_stats`), { totalProfit: currentTotalProfit + profit });
-
-    const mSnap = await get(ref(db, 'market/gold'));
-    await update(ref(db, 'market/gold'), { volumeSell: (mSnap.val().volumeSell || 0) + sellValue });
-
-    document.getElementById('gold-sell-amount').value = '';
-    const msg = `BÁN RA: ${goldAmt.toLocaleString(undefined, {maximumFractionDigits: 4})} GOLD\nThu về: ${sellValue.toLocaleString()} PP\nLãi/Lỗ: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()} PP!`;
-    window.showResult("BÁN VÀNG", msg, profit >= 0);
-};
-
-window.fillAllGold = async () => {
-    const uSnap = await get(ref(db, `users/${uid}`));
-    const u = uSnap.val();
-    if (u && u.gold && u.gold.amount > 0) {
-        document.getElementById('gold-sell-amount').value = u.gold.amount;
-    } else {
-        alert("Bạn không có Vàng để bán!");
-    }
-};
-
-// ==========================================
-// 🚀 TRADING CRYPTO LIVE
-// ==========================================
-let cryptoInterval; let isCryptoTrading = false; let cMult = 1.00; let cCrash = 1.00; let cBet = 0;
-let cryptoData = []; let chartX = 0;
-window.openCryptoGame = () => { if(isCryptoTrading) return; document.getElementById('crypto-modal').style.display = 'flex'; resetCryptoUI(); };
-window.closeCryptoGame = () => { if(isCryptoTrading) return alert("Đang gồng lãi, không thể thoát!"); document.getElementById('crypto-modal').style.display = 'none'; };
-function resetCryptoUI() {
-    document.getElementById('crypto-multiplier').innerText = 'x1.00'; document.getElementById('crypto-multiplier').style.color = 'var(--neon-gold)';
-    document.getElementById('crypto-rugpull').style.display = 'none';
-    const btn = document.getElementById('crypto-action-btn'); btn.innerText = '[ 🚀 MUA VÀO & GỒNG LÃI ]'; btn.onclick = window.startCryptoLive; btn.style.borderColor = 'var(--neon-gold)'; btn.style.color = 'var(--neon-gold)';
-    document.getElementById('crypto-bet').disabled = false; document.getElementById('crypto-bet').value = '';
-    const canvas = document.getElementById('cryptoCanvas'); const ctx = canvas.getContext('2d'); ctx.clearRect(0,0, canvas.width, canvas.height);
-}
-window.startCryptoLive = async () => {
-    if(isCryptoTrading) return; const bet = parseInt(document.getElementById('crypto-bet').value); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
-    const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; if(currentPP < bet) return window.showResult("NGHÈO", "Bạn không đủ vốn!", false);
-    await update(ref(db, `users/${uid}`), { pp: currentPP - bet }); cBet = bet; isCryptoTrading = true;
-    
-    const e = 100 / (Math.random() * 100); cCrash = parseFloat(Math.max(1.00, Math.min(100.00, e)).toFixed(2)); if(Math.random() < 0.08) cCrash = 1.00;
-    
-    document.getElementById('crypto-bet').disabled = true; const btn = document.getElementById('crypto-action-btn'); btn.innerText = '[ 💰 CHỐT LỜI NGAY! ]'; btn.style.borderColor = 'var(--neon-green)'; btn.style.color = 'var(--neon-green)'; btn.onclick = window.cashOutCrypto;
-    cMult = 1.00; cryptoData = [{x: 0, y: 300}]; chartX = 0; let speed = 0.003;
-    const canvas = document.getElementById('cryptoCanvas'); const ctx = canvas.getContext('2d');
-    
-    cryptoInterval = setInterval(() => {
-        cMult += speed; speed += 0.0002;
-        let visualMult = cMult + (Math.random() * 0.05 - 0.02);
-        document.getElementById('crypto-multiplier').innerText = `x${Math.max(1.00, visualMult).toFixed(2)}`;
-        
-        chartX += 3; let chartY = 300 - ((cMult - 1) * 30); if(chartY < 20) chartY = 20 + Math.random()*10;
-        cryptoData.push({x: chartX, y: chartY});
-        
-        ctx.clearRect(0,0, canvas.width, canvas.height);
-        ctx.beginPath(); ctx.moveTo(cryptoData[0].x, cryptoData[0].y);
-        ctx.strokeStyle = '#00ff80'; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = '#00ff80';
-        for(let i=1; i<cryptoData.length; i++) { ctx.lineTo(cryptoData[i].x, cryptoData[i].y); }
-        ctx.stroke();
-        
-        if(chartX >= 660) cryptoData.shift();
-
-        if(cMult >= cCrash) {
-            clearInterval(cryptoInterval); isCryptoTrading = false;
-            document.getElementById('crypto-multiplier').style.color = 'var(--neon-red)'; document.getElementById('crypto-rugpull').style.display = 'block';
-            const btn = document.getElementById('crypto-action-btn'); btn.innerText = 'CHÁY TÀI KHOẢN!'; btn.onclick = null; btn.style.borderColor = 'var(--neon-red)'; btn.style.color = 'var(--neon-red)';
-            ctx.lineTo(chartX, 300); ctx.strokeStyle = 'red'; ctx.shadowColor = 'red'; ctx.stroke();
-            setTimeout(() => { window.showResult("RUG PULL!", `Sàn đã úp sọt ở x${cCrash.toFixed(2)}.\nMất trắng ${cBet.toLocaleString()} PP!`, false); resetCryptoUI(); }, 1500);
-        }
-    }, 40);
-};
-window.cashOutCrypto = async () => {
-    if(!isCryptoTrading) return; clearInterval(cryptoInterval); isCryptoTrading = false;
-    const winAmount = Math.floor(cBet * cMult); const snap = await get(ref(db, `users/${uid}`)); const currentPP = Number(snap.val().pp) || 0; await update(ref(db, `users/${uid}`), { pp: currentPP + winAmount });
-    document.getElementById('crypto-multiplier').style.color = 'var(--neon-gold)'; const btn = document.getElementById('crypto-action-btn'); btn.innerText = 'ĐÃ CHỐT LỜI X' + cMult.toFixed(2); btn.onclick = null; btn.style.borderColor = '#555'; btn.style.color = '#555';
-    setTimeout(() => { window.showResult("CHỐT LỜI", `Xả hàng an toàn tại x${cMult.toFixed(2)}.\nĂn ${(winAmount).toLocaleString()} PP!`, true); resetCryptoUI(); }, 1000);
-};
-
-// ==========================================
-// 🎲 MINIGAMES CƠ BẢN
-// ==========================================
-async function executeBet(gameName, logicCallback) {
-    let bet = prompt(`[ ${gameName} ]\nNhập số PP bạn muốn đặt cược:`); if(!bet) return; bet = parseInt(bet); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Số cược không hợp lệ!", false);
-    const snap = await get(ref(db, `users/${uid}`)); const u = snap.val(); const currentPP = Number(u.pp) || 0;
-    if(currentPP < bet) return window.showResult("NGHÈO", `Bạn chỉ có ${currentPP.toLocaleString()} PP. Không đủ cược!`, false);
-    const res = await logicCallback(bet, currentPP); if(res === null) return; 
-    const { payout, message, title, isWin } = res;
-    const modal = document.getElementById('result-modal'); const t = document.getElementById('result-title'); const msg = document.getElementById('result-msg'); const icon = document.getElementById('result-icon'); const btn = document.getElementById('result-close-btn');
-    t.innerText = "ĐANG XỬ LÝ..."; t.className = "text-blue glow-pulse"; msg.innerHTML = ""; icon.className = "fas fa-spinner fa-spin fa-3x text-blue"; btn.style.display = 'none'; modal.style.display = 'flex';
-    setTimeout(async () => { const freshSnap = await get(ref(db, `users/${uid}`)); const freshPP = Number(freshSnap.val().pp) || 0; await update(ref(db, `users/${uid}`), { pp: freshPP + payout }); t.innerText = title; t.className = isWin ? 'text-gold glow-pulse' : 'text-red glow-pulse'; msg.innerHTML = `${message}<br><br>=> PP HIỆN TẠI: ${(freshPP + payout).toLocaleString()}`; icon.className = isWin ? "fas fa-trophy fa-3x text-gold" : "fas fa-skull fa-3x text-red"; btn.style.display = 'block'; }, 1500); 
-}
-
-window.rollGacha = async () => { const snap = await get(ref(db, `users/${uid}`)); const c = Number(snap.val().pp) || 0; if(c < 5000) return window.showResult("NGHÈO", "Bạn không đủ 5,000 PP!", false); const r = Math.random()*100; let n = c - 5000, m = "Trắng tay... Bạn mất 5,000 PP 💀", t = "BAY MÀU", win = false; if(r > 98) { n += 50000; m = "Trúng 50,000 PP 🎉"; t = "JACKPOT!!!"; win = true; } else if(r > 88) { n += 10000; m = "Lời 10,000 PP 💵"; t = "X2 TÀI SẢN"; win = true; } await update(ref(db, `users/${uid}`), { pp: n }); window.showResult(t, m, win); };
-window.playClawMachine = () => executeBet("GẮP GẤU BÔNG", async (bet) => { const r = Math.random(); if(r < 0.05) return { payout: bet * 10, message: `Trời ơi!!! Bạn gắp được 🦄 KỲ LÂN NGÂN HÀ!\nThắng ${(bet*10).toLocaleString()} PP!`, title: "BÀN TAY VÀNG", isWin: true }; if(r < 0.35) return { payout: bet * 2, message: `Tuyệt vời! Gắp được 🐻 Gấu Teddy!\nThắng ${(bet*2).toLocaleString()} PP!`, title: "GẮP THÀNH CÔNG", isWin: true }; return { payout: -bet, message: `Tuột càng mất rồi!\nBạn mất ${bet.toLocaleString()} PP!`, title: "TUỘT CÀNG", isWin: false }; });
-window.playTarot = () => executeBet("BÓI TAROT", async (bet) => { let choice = prompt("Có 3 lá bài đang úp (1, 2, 3).\nBạn chọn lật lá bài số mấy?"); if(!['1','2','3'].includes(choice)) return null; const cards = [ { name: "THE SUN ☀️", mult: 5, msg: "Tài lộc dồi dào!" }, { name: "THE LOVERS 💕", mult: 2, msg: "May mắn nhân đôi!" }, { name: "THE TOWER 🌩️", mult: 0, msg: "Tiền tài tiêu tán!" }, { name: "DEATH 💀", mult: 0, msg: "Mất sạch tiền cược!" }, { name: "WHEEL OF FORTUNE 🎡", mult: 1.5, msg: "Sinh lời vừa phải." } ]; const drawn = cards[Math.floor(Math.random() * cards.length)]; const profit = Math.floor(bet * drawn.mult) - bet; if (profit >= 0) return { payout: profit, message: `Lật trúng lá ${drawn.name}\nNhận được ${(profit + bet).toLocaleString()} PP!`, title: "THÔNG ĐIỆP", isWin: true }; return { payout: profit, message: `Lật trúng lá ${drawn.name}\nMất ${bet.toLocaleString()} PP!`, title: "VẬN ĐEN", isWin: false }; });
-window.playSquidGame = () => executeBet("CẦU KÍNH SQUID GAME", async (bet) => { let step = 1; while(step <= 5) { let choice = prompt(`🌉 BƯỚC ${step}/5:\nChọn T (Trái) hoặc P (Phải):`); if(!choice) return { payout: -bet, message: `Bỏ cuộc giữa chừng. Mất ${bet.toLocaleString()} PP!`, title: "CHẾT NHÁT", isWin: false }; choice = choice.toUpperCase(); if(choice !== 'T' && choice !== 'P') { alert("Nhập T hoặc P."); continue; } if (Math.random() < 0.40) { alert(`Bước ${step} AN TOÀN!`); step++; } else return { payout: -bet, message: `RẮC... XOẢNG!!! 🩸\nRơi vực ở bước ${step}. Mất ${bet.toLocaleString()} PP!`, title: "RƠI VỰC", isWin: false }; } return { payout: bet * 20, message: `VƯỢT QUA THÀNH CÔNG!!!\nThắng ${(bet*20).toLocaleString()} PP!`, title: "SỐNG SÓT", isWin: true }; });
-window.playBossRaid = () => executeBet("SĂN BOSS VỰC", async (bet) => { let playerHp = bet * 3, bossHp = bet * 5; alert(`🗡️ Bạn mua vũ khí giá ${bet.toLocaleString()} PP!`); while (playerHp > 0 && bossHp > 0) { const action = confirm(`🔥 MÁU BOSS: ${bossHp}\n🛡️ MÁU BẠN: ${playerHp}\n\n[OK] = CHÉM\n[CANCEL] = CHẠY (Giữ nửa tiền)`); if (!action) return { payout: -Math.floor(bet/2), message: `Bỏ chạy. Mất ${(Math.floor(bet/2)).toLocaleString()} PP.`, title: "BỎ CHẠY", isWin: false }; const pDmg = Math.floor(bet * (Math.random() + 0.4)), bDmg = Math.floor(bet * (Math.random() + 0.7)); bossHp -= pDmg; if(bossHp <= 0) break; playerHp -= bDmg; alert(`💥 Chém Boss: ${pDmg}\n🩸 Boss tát: ${bDmg}`); } if (playerHp <= 0) return { payout: -bet, message: `WAASTED... BẠN ĐÃ TỬ TRẬN!\nMất ${bet.toLocaleString()} PP.`, title: "TỬ TRẬN", isWin: false }; return { payout: bet * 3, message: `BOSS ĐÃ BỊ TIÊU DIỆT!!! 🏆\nNhận ${(bet*3).toLocaleString()} PP!`, title: "DIỆT MA VƯƠNG", isWin: true }; });
-window.playMinesweeper = () => executeBet("MÁY DÒ MÌN", async (bet) => { let guess = prompt(`Nhập 3 ô (từ 1-10) AN TOÀN. VD: 2, 5, 9`); if(!guess) return null; let pCells = guess.split(',').map(s => parseInt(s.trim())); if(pCells.length !== 3 || pCells.some(n => isNaN(n) || n<1 || n>10)) { alert("Lỗi!"); return null; } let mines = []; while(mines.length < 4) { let m = Math.floor(Math.random()*10)+1; if(!mines.includes(m)) mines.push(m); } let hitMines = pCells.filter(c => mines.includes(c)); if (hitMines.length > 0) return { payout: -bet, message: `BÙMMM!!! 💥\nMìn: [ ${mines.join(', ')} ]\nBạn đạp trúng ô ${hitMines[0]}! Mất ${bet.toLocaleString()} PP!`, title: "ĐẠP MÌN", isWin: false }; return { payout: bet * 5, message: `AN TOÀN!!!\nMìn: [ ${mines.join(', ')} ]\nNhận ${(bet*5).toLocaleString()} PP!`, title: "CHUYÊN GIA", isWin: true }; });
-window.playAuction = () => executeBet("ĐẤU GIÁ RƯƠNG", async (bet) => { const realValue = Math.floor(Math.random() * 99000) + 1000; const botThreshold = Math.floor(realValue * (Math.random() * 0.9 + 0.4)); let bid = prompt(`Nhập giá PP muốn mua (Rương 1k-100k):`); if(!bid) return null; bid = parseInt(bid); if(isNaN(bid) || bid <= 0) return null; if (bid < botThreshold) return { payout: 0, message: `Giá ${bid.toLocaleString()} quá rẻ. Hệ thống không bán!\n(Rương chứa ${realValue.toLocaleString()} PP).`, title: "KHÔNG KHỚP LỆNH", isWin: true }; const netProfit = realValue - bid; if (netProfit >= 0) return { payout: netProfit, message: `Mua giá ${bid.toLocaleString()} PP.\nMở ra: ${realValue.toLocaleString()} PP!\nLỜI ${netProfit.toLocaleString()} PP!`, title: "ĐỒ CỔ THẬT", isWin: true }; return { payout: netProfit, message: `Mua giá ${bid.toLocaleString()} PP.\nMở ra: ${realValue.toLocaleString()} PP!\nBỊ HỚ mất ${(netProfit * -1).toLocaleString()} PP!`, title: "BỊ LỪA", isWin: false }; });
-window.playSlot = () => executeBet("SLOT", (b) => { const s=['🍒','🍋','🔔','💎','🍉','💀','💩','🎱']; const r1=s[Math.floor(Math.random()*8)], r2=s[Math.floor(Math.random()*8)], r3=s[Math.floor(Math.random()*8)], res=`[ ${r1} | ${r2} | ${r3} ]`; if(r1===r2&&r2===r3) return {payout:b*10, message:`${res}\nNỔ HŨ X10! Trúng ${(b*10).toLocaleString()} PP!`, title:"JACKPOT", isWin:true}; if(r1===r2||r2===r3||r1===r3) return {payout:b, message:`${res}\nTRÚNG CẶP! X2 Tài sản!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`${res}\nTRẬT LẤT! Mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playCocktail = () => executeBet("COCKTAIL ĐỘC", (b) => { const p = Math.floor(Math.random()*6); if(p===0 || p===1) return {payout:-b, message:`LY CÓ ĐỘC! (Tỉ lệ chết 33%)\nMất sạch ${b.toLocaleString()} PP!`, title:"TỬ VONG", isWin:false}; return {payout:Math.floor(b*0.2), message:`An toàn! Lời ${(Math.floor(b*0.2)).toLocaleString()} PP!`, title:"NGON MIỆNG", isWin:true}; });
-window.playDarts = () => executeBet("PHI TIÊU", (b) => { const s = Math.floor(Math.random()*100)+1; if(s>96) return {payout:b*4, message:`Hồng tâm (${s}đ)! Trúng ${(b*4).toLocaleString()} PP!`, title:"XUẤT THẦN", isWin:true}; if(s>60) return {payout:b, message:`Trúng bảng (${s}đ)! X2 tiền!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Phóng trượt (${s}đ)! Mất ${b.toLocaleString()} PP!`, title:"TRƯỢT", isWin:false}; });
-window.playBaccarat = (c) => executeBet("BACCARAT", (b) => { const p=Math.floor(Math.random()*10), k=Math.floor(Math.random()*10), win=p>k?'PLAYER':(k>p?'BANKER':'TIE'); if(win==='TIE') return {payout:-(Math.floor(b*0.1)), message:`Con: ${p} | Cái: ${k}\nHÒA NHAU! Nhà cái thu 10% phế.`, title:"HÒA", isWin:false}; if(c===win) return {payout:b, message:`Con: ${p} | Cái: ${k}\nĐOÁN ĐÚNG! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Con: ${p} | Cái: ${k}\nĐOÁN SAI! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playBlackjack = () => executeBet("BLACKJACK 21", (b) => { const gS=()=>Math.random()<0.35?22:Math.floor(Math.random()*6)+16, pS=gS(), dS=gS(); if(pS>21) return {payout:-b, message:`Bạn 22 điểm (Dễ Quắc)!\nMất ${b.toLocaleString()} PP.`, title:"QUẮC", isWin:false}; if(dS>21) return {payout:b, message:`Bạn: ${pS} | Nhà cái: Quắc!\nThắng ${b.toLocaleString()} PP.`, title:"NHÀ CÁI QUẮC", isWin:true}; if(pS===dS) return {payout:0, message:`Cùng ${pS} điểm. Hòa tiền.`, title:"HÒA", isWin:true}; if(pS>dS) return {payout:b, message:`Bạn: ${pS} | Nhà cái: ${dS}\nThắng ${b.toLocaleString()} PP!`, title:"THẮNG 21", isWin:true}; return {payout:-b, message:`Bạn: ${pS} | Nhà cái: ${dS}\nThua ${b.toLocaleString()} PP!`, title:"THUA RỒI", isWin:false}; });
-window.playBilliards = () => executeBet("BIDA", (b) => { if(Math.random()<0.25) return {payout:Math.floor(b*1.5), message:`Bi vào lỗ (Chỉ 25% trúng)!\nThắng ${(Math.floor(b*1.5)).toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Bi văng ra ngoài.\nThua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playSafe = () => executeBet("MỞ KÉT SẮT", (b) => { let g=prompt("Mã két (000-999):"); if(!g||g.length!==3) return null; const s=Math.floor(Math.random()*1000).toString().padStart(3,'0'); if(g===s) return {payout:b*20, message:`Mã: ${s}\nMỞ THÀNH CÔNG! Trúng ${(b*20).toLocaleString()} PP!`, title:"TRỘM KÉT", isWin:true}; return {payout:-b, message:`Mã: ${s}\nCòi báo động! Mất ${b.toLocaleString()} PP!`, title:"BỊ BẮT", isWin:false}; });
-window.playFish = async () => { const snap = await get(ref(db, `users/${uid}`)); const c = Number(snap.val().pp)||0; if(c<10000) return window.showResult("NGHÈO", "Bạn không đủ 10k PP đạn!", false); const r=Math.random(); let n=c-10000, m="Bắn trượt! Mất 10,000 PP 💀", t="TRƯỢT", win=false; if(r<0.005) {n+=500000; m="HẠ CÁ MẬP VÀNG (+500k PP) 🦈"; t="BÙM CHÍU"; win=true;} else if(r<0.05) {n+=100000; m="TRÚNG RÙA THẦN (+100k PP) 🐢"; t="TRÚNG LỚN"; win=true;} else if(r<0.2) {n+=30000; m="Đàn cá nhỏ (+30k PP) 🐟"; t="CÓ LÃI"; win=true;} await update(ref(db, `users/${uid}`), { pp: n }); window.showResult(t, m, win); };
-window.playBomb = () => executeBet("BOM HẸN GIỜ", (b) => { const c=prompt("Cắt: ĐỎ, XANH, VÀNG?"); if(!c||!['ĐỎ','XANH','VÀNG'].includes(c.toUpperCase()))return null; const bm=['ĐỎ','XANH','VÀNG'][Math.floor(Math.random()*3)]; if(c.toUpperCase()===bm) return {payout:-b, message:`CẮT NHẦM DÂY!\nMất sạch ${b.toLocaleString()} PP!`, title:"BÙMMM!!!", isWin:false}; return {payout:Math.floor(b*0.5), message:`Bom đã tắt (Dây nổ là ${bm}).\nĐược thưởng ${(Math.floor(b*0.5)).toLocaleString()} PP!`, title:"SỐNG SÓT", isWin:true}; });
-window.coinFlip = (c) => executeBet("ĐỒNG XU", (b) => { const isWin = Math.random() < 0.40; return isWin ? {payout:b, message:`Trời độ bạn! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true} : {payout:-b, message:`Đồng xu lật ngược phút cuối! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playChanLe = (c) => executeBet("CHẴN LẺ", (b) => { if(Math.random()<0.08) return {payout:-b, message:`Cái giở trò bịp. Thua ${b.toLocaleString()} PP!`, title:"BỊP", isWin:false}; const d = Math.floor(Math.random()*6)+1, r=d%2===0?'CHAN':'LE'; return c===r ? {payout:b, message:`Ra số ${d}! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true} : {payout:-b, message:`Ra số ${d}! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playRoulette = (c) => executeBet("ROULETTE", (b) => { const r = Math.random(); let rs='BLACK', m=2, n="ĐEN"; if(r<0.02){rs='GREEN';m=14;n="XANH LÁ";}else if(r<0.42){rs='RED';m=2;n="ĐỎ";} return c===rs ? {payout:b*(m-1), message:`Bóng rơi vào ô ${n}!\nThắng ${(b*(m-1)).toLocaleString()} PP!`, title:"THẮNG LỚN", isWin:true} : {payout:-b, message:`Bóng rơi vào ô ${n}! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playTerminal = () => executeBet("HACK TERMINAL", (b) => { let n=parseInt(prompt("Mã (1-10):")); if(isNaN(n))return null; const s=Math.floor(Math.random()*12)+1; return n===s ? {payout:b*8, message:`Mã là ${s}! Trúng ${(b*8).toLocaleString()} PP!`, title:"HACKER ĐỈNH", isWin:true} : {payout:-b, message:`Mã là ${s}! Bị phát hiện. Mất ${b.toLocaleString()} PP!`, title:"THẤT BẠI", isWin:false}; });
-window.playWheel = () => executeBet("NÓN KỲ DIỆU", (b) => { const m=[0, 0, 0, 0.5, 1.5, 2][Math.floor(Math.random()*6)], df=Math.floor(b*m)-b; if(df>0) return {payout:df, message:`Vào ô x${m}! Lời ${df.toLocaleString()} PP!`, title:"LỜI RỒI", isWin:true}; if(df===0) return {payout:0, message:`Vào ô x1! Hòa vốn.`, title:"HÒA", isWin:true}; return {payout:df, message:`Vào ô x${m}! Lỗ ${(df*-1).toLocaleString()} PP!`, title:"LỖ", isWin:false}; });
-window.playHighLow = (c) => executeBet("BÀI LỚN NHỎ", (b) => { const p=Math.floor(Math.random()*13)+1, s=Math.floor(Math.random()*13)+1; if(p===s) return {payout:Math.floor(-b*0.5), message:`Bạn: ${p} | Máy: ${s}. Hòa bài nhưng nhà cái thu phế nửa tiền!`, title:"HÒA LỖ", isWin:false}; if((c==='HIGH'&&p>s)||(c==='LOW'&&p<s)) return {payout:b, message:`Bạn: ${p} | Máy: ${s}. Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Bạn: ${p} | Máy: ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playHorse = (c) => executeBet("ĐUA NGỰA", (b) => { let w=Math.floor(Math.random()*3)+1; if(Math.random()<0.15 && c===w) w=(w%3)+1; return c===w ? {payout:b*2, message:`Ngựa ${w} Về Nhất! Thắng ${(b*2).toLocaleString()} PP!`, title:"THẮNG", isWin:true} : {payout:-b, message:`Ngựa ${w} Về Nhất! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playBauCua = () => executeBet("BẦU CUA", (b) => { const c=document.getElementById('baucua-choice').value, r=['BAU','CUA','TOM','CA','GA','NAI'][Math.floor(Math.random()*7)===6?Math.floor(Math.random()*6):Math.floor(Math.random()*5)]; return c===r ? {payout:b*4, message:`Mở ra ${r}! Thắng ${(b*4).toLocaleString()} PP!`, title:"THẮNG x5", isWin:true} : {payout:-b, message:`Mở ra ${r}! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playSpaceBauCua = () => executeBet("BẦU CUA VŨ TRỤ", (b) => { const c=document.getElementById('baucua-choice').value, i=['BAU','CUA','TOM','CA','GA','NAI'], d1=i[Math.floor(Math.random()*6)], d2=i[Math.floor(Math.random()*6)], d3=i[Math.floor(Math.random()*6)]; let k=0; if(d1===c)k++; if(d2===c)k++; if(d3===c)k++; if(k>0) return {payout:b*(k*2), message:`Ra: ${d1}, ${d2}, ${d3}.\nTrúng ${k} con! Thắng ${(b*(k*2)).toLocaleString()} PP!`, title:"ĂN ĐẬM", isWin:true}; return {payout:-b, message:`Ra: ${d1}, ${d2}, ${d3}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playChest = (c) => executeBet("RƯƠNG TỬ THẦN", (b) => { const bm=Math.floor(Math.random()*3)+1; return c===bm ? {payout:-b, message:`Rương ${bm} là Bom! Mất sạch ${b.toLocaleString()} PP!`, title:"NỔ TUNG", isWin:false} : {payout:Math.floor(b*0.5), message:`An toàn! Rương ${bm} là bom. Nhận ${(Math.floor(b*0.5)).toLocaleString()} PP!`, title:"SỐNG SÓT", isWin:true}; });
-window.playLottery = () => executeBet("XỔ SỐ", (b) => { const n=parseInt(prompt("Vé (00-99):")); if(isNaN(n))return null; const s=Math.floor(Math.random()*110); return n===s ? {payout:b*70, message:`Kết quả: ${s}!\nTRÚNG ${(b*70).toLocaleString()} PP!`, title:"ĐỘC ĐẮC", isWin:true} : {payout:-b, message:`Kết quả: ${s}. Trật lất! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playKeno = () => executeBet("KENO", (b) => { let g=parseInt(prompt("Bi (1-20):")); if(isNaN(g)||g<1||g>20) return null; const s=Math.floor(Math.random()*22)+1; if(g===s) return {payout:b*10, message:`Bi rớt vào ${s}! Thắng ${(b*10).toLocaleString()} PP!`, title:"TIÊN TRI", isWin:true}; return {payout:-b, message:`Bi rớt vào ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playMine = () => executeBet("ĐÀO ĐÁ QUÝ", (b) => { if(Math.random()<0.40) return {payout:-b, message:`Cuốc trúng Bom! Mất ${b.toLocaleString()} PP!`, title:"NỔ BANH XÁC", isWin:false}; return {payout:Math.floor(b*0.2), message:`Đào được Thạch Anh. Lời ${(Math.floor(b*0.2)).toLocaleString()} PP!`, title:"THỢ MỎ", isWin:true}; });
-window.rpsGame = (c) => executeBet("KÉO BÚA BAO", (b) => { if(Math.random()<0.25) return {payout:-b, message:`Máy nhìn trộm đòn! Thua ${b.toLocaleString()} PP!`, title:"BỊP BỢM", isWin:false}; const s=['KEO','BUA','BAO'][Math.floor(Math.random()*3)]; if(c===s) return {payout:0, message:`Máy ra ${s}. HÒA!`, title:"HÒA", isWin:true}; if((c==='KEO'&&s==='BAO')||(c==='BUA'&&s==='KEO')||(c==='BAO'&&s==='BUA')) return {payout:b, message:`Máy ra ${s}. Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Máy ra ${s}. Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playCockfight = (c) => executeBet("ĐÁ GÀ", (b) => { const w = Math.random()>0.6? (c==='RED'?'BLUE':'RED') : c; if(c===w) return {payout:b, message:`Gà tung đòn hiểm thắng!\nĂn ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Gà gãy giò. Mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playThreeCards = () => executeBet("BÀI CÀO", (b) => { const pScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10, dScore=(Math.floor(Math.random()*10)+Math.floor(Math.random()*10)+Math.floor(Math.random()*10))%10; if(pScore>dScore && Math.random()>0.1) return {payout:b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; if(pScore===dScore) return {payout:-Math.floor(b*0.2), message:`Hòa, cái thu phế 20%.`, title:"HÒA LỖ", isWin:false}; return {payout:-b, message:`Bạn: ${pScore} Nút | Cái: ${dScore} Nút\nThua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playCupid = () => executeBet("MŨI TÊN TÌNH YÊU", (b) => { const m=(Math.random()*3).toFixed(1), df=Math.floor(b*m)-b; if(df>0) return {payout:df, message:`Trúng hệ số x${m}!\nLời ${df.toLocaleString()} PP.`, title:"TRÚNG", isWin:true}; if(df===0) return {payout:0, message:`Trúng x1.0! Hòa vốn.`, title:"HÒA", isWin:true}; return {payout:df, message:`Trúng x${m}!\nLỗ ${(df*-1).toLocaleString()} PP.`, title:"LỖ", isWin:false}; });
-window.playShield = () => executeBet("ĐỠ ĐẠN", (b) => { if(Math.random()<0.4) return {payout:Math.floor(b*0.3), message:`Giương khiên thành công!\nLời ${(Math.floor(b*0.3)).toLocaleString()} PP!`, title:"AN TOÀN", isWin:true}; return {payout:-b, message:`Khiên vỡ! Trúng đạn.\nMất ${b.toLocaleString()} PP!`, title:"CHẾT", isWin:false}; });
-window.playPirate = (c) => executeBet("KHO BÁU", (b) => { const w=Math.floor(Math.random()*4)+1; if(c===w) return {payout:b*2, message:`Đảo chứa kho báu!\nThắng ${(b*2).toLocaleString()} PP!`, title:"VÀNG", isWin:true}; return {payout:-b, message:`Gặp cướp biển!\nMất ${b.toLocaleString()} PP!`, title:"BỊ CƯỚP", isWin:false}; });
-window.playEgg = () => executeBet("ĐẬP TRỨNG", (b) => { if(Math.random()<0.7) return {payout:Math.floor(b*0.1), message:`Trứng nở ra vàng!\nLời ${(Math.floor(b*0.1)).toLocaleString()} PP.`, title:"THU HOẠCH", isWin:true}; return {payout:-b, message:`Trứng ung! Thối hoắc.\nMất ${b.toLocaleString()} PP!`, title:"THÚI QUẮC", isWin:false}; });
-window.playExactDice = () => executeBet("ĐOÁN XÚC XẮC", (b) => { let c=parseInt(prompt("Mặt (1-6):")); if(isNaN(c)||c<1||c>6) return null; const r=Math.floor(Math.random()*7)+1; if(c===r) return {payout:b*5, message:`Đổ ra mặt ${r}!\nĂn trọn ${(b*5).toLocaleString()} PP!`, title:"THẦN BÀI", isWin:true}; return {payout:-b, message:`Đổ ra mặt ${r}!\nTrượt rồi, mất ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-window.playDragonTiger = (c) => executeBet("RỒNG HỔ", (b) => { const d=Math.floor(Math.random()*13)+1, t=Math.floor(Math.random()*13)+1; if(d===t) return {payout:-Math.floor(b*0.5), message:`Rồng ${d} - Hổ ${t}\nHòa nhau, nhà cái thu nửa tiền!`, title:"HÒA LỖ", isWin:false}; const w=d>t?'DRAGON':'TIGER'; if(c===w) return {payout:b, message:`Rồng ${d} - Hổ ${t}\nĐoán chuẩn! Thắng ${b.toLocaleString()} PP!`, title:"THẮNG", isWin:true}; return {payout:-b, message:`Rồng ${d} - Hổ ${t}\nĐoán sai! Thua ${b.toLocaleString()} PP!`, title:"THUA", isWin:false}; });
-
-// ==========================================
-// 🎲 TÀI XỈU 3D (FIXED LOGIC)
-// ==========================================
-window.playTaiXiu = (choice) => {
-    const betStr = prompt(`Bạn chọn ${choice === 'TAI' ? 'TÀI' : 'XỈU'}.\nNhập số PP cược:`);
-    if(!betStr) return;
-    const bet = parseInt(betStr);
-    if(isNaN(bet) || bet <= 0) return alert("Số cược không hợp lệ!");
-    get(ref(db, `users/${uid}`)).then(snap => {
-        const currentPP = Number(snap.val().pp) || 0;
-        if(currentPP < bet) return alert("Bạn không đủ PP!");
-        txBet = bet;
-        txChoice = choice;
-        isTxRevealed = false;
-        document.getElementById('taixiu-modal').style.display = 'flex';
-        document.getElementById('taixiu-cup').style.display = 'block';
-        document.getElementById('taixiu-cup').style.transform = 'translate(0, 0)';
-        document.getElementById('tx-d1').className = 'fas fa-dice-one tx-dice red';
-        document.getElementById('tx-d2').className = 'fas fa-dice-one tx-dice black';
-        document.getElementById('tx-d3').className = 'fas fa-dice-one tx-dice red';
-    });
-};
-
-window.openTaiXiuInstant = async () => {
-    if (isTxRevealed) return;
-    isTxRevealed = true;
-    const snap = await get(ref(db, `users/${uid}`));
-    const currentPP = Number(snap.val().pp) || 0;
-    if(currentPP < txBet) {
-        document.getElementById('taixiu-modal').style.display = 'none';
-        return alert("Lỗi: Tài khoản không đủ tiền lúc mở bát!");
-    }
-
-    await update(ref(db, `users/${uid}`), { pp: currentPP - txBet });
-
-    const d1 = Math.floor(Math.random() * 6) + 1;
-    const d2 = Math.floor(Math.random() * 6) + 1;
-    const d3 = Math.floor(Math.random() * 6) + 1;
-    const total = d1 + d2 + d3;
-
-    const diceClasses = [ '', 'fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six' ];
-
-    document.getElementById('tx-d1').className = `fas ${diceClasses[d1]} tx-dice red`;
-    document.getElementById('tx-d2').className = `fas ${diceClasses[d2]} tx-dice black`;
-    document.getElementById('tx-d3').className = `fas ${diceClasses[d3]} tx-dice red`;
-
-    const cup = document.getElementById('taixiu-cup');
-    cup.classList.add('shake-anim');
-
-    setTimeout(async () => {
-        cup.classList.remove('shake-anim');
-        cup.style.display = 'none'; // Mở bát
-
-        const isTai = total >= 11;
-        const isWin = (txChoice === 'TAI' && isTai) || (txChoice === 'XIU' && !isTai);
-        const isBao = d1 === d2 && d2 === d3;
-
-        let payout = 0;
-        let msg = `Kết quả: ${d1} - ${d2} - ${d3} (Tổng: ${total})\n`;
-        let title = "";
-
-        if (isBao) {
-            payout = 0; 
-            msg += "BÃO!!! Nhà cái húp trọn mâm.\nBạn mất trắng!";
-            title = "BÃO CUỐN";
-        } else if (isWin) {
-            payout = txBet * 2;
-            msg += `Đoán đúng ${txChoice === 'TAI' ? 'TÀI' : 'XỈU'}!\nĂn ${(txBet).toLocaleString()} PP (Hoàn tiền + Lãi).`;
-            title = "THẮNG ĐẬM";
+        if (window.fbShots > 0) {
+            window.fbCurrentShot++;
+            document.getElementById('fb-lives').innerText = `Lượt sút: ${window.fbCurrentShot}/5`; 
+            setTimeout(() => resetPenaltyTurn(), 2000);
         } else {
-            payout = 0;
-            msg += `Ra ${isTai ? 'TÀI' : 'XỈU'}.\nBạn mất ${txBet.toLocaleString()} PP!`;
-            title = "THUA SẠCH";
+            setTimeout(() => checkPenaltyEnd(), 2000);
         }
-
-        const freshSnap = await get(ref(db, `users/${uid}`));
-        const freshPP = Number(freshSnap.val().pp) || 0;
-        if (payout > 0) {
-            await update(ref(db, `users/${uid}`), { pp: freshPP + payout });
-        }
-
-        setTimeout(() => {
-            document.getElementById('taixiu-modal').style.display = 'none';
-            window.showResult(title, msg, isWin && !isBao);
-        }, 2000);
-
-    }, 1000);
+    }, 500); 
 };
 
-// ==========================================
-// 🃏 TIẾN LÊN MIỀN NAM VIP (FULL LOGIC + ĐỒNG HỒ 30S)
-// ==========================================
-let myTlRoomId = null; let tlTimerInterval = null; let tlCurrentTurnStartTime = 0; let windowLastHandSig = "";
-const SUITS = ['♠', '♣', '♦', '♥'];
-const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
-let selectedCardsIndices = [];
-
-window.openTienLenModal = () => { document.getElementById('tienlen-modal').style.display = 'flex'; listenTienLenRooms(); };
-window.closeTienLenModal = () => { document.getElementById('tienlen-modal').style.display = 'none'; if(tlTimerInterval) clearInterval(tlTimerInterval); };
-
-function listenTienLenRooms() {
-    onValue(ref(db, 'tienlen_rooms'), snap => {
-        const rooms = snap.val() || {}; let lobbyHtml = ""; let amIInRoom = false;
-        
-        for(let k in rooms) {
-            const r = rooms[k]; const players = r.players || {}; const isMeHere = Object.keys(players).includes(uid);
-            if(isMeHere) { amIInRoom = true; myTlRoomId = k; renderTlBoard(r); manageTlTimer(r); }
-            if(r.status === 'WAITING' && !isMeHere) {
-                lobbyHtml += `<div class="room-item">
-                    <div><strong class="text-gold">PHÒNG BÀI CỦA ${r.creatorName}</strong><br><small>Tiền cược: ${r.bet.toLocaleString()} PP / Ván | Sĩ số: ${Object.keys(players).length}/4</small></div>
-                    ${Object.keys(players).length < 4 ? `<button onclick="tlJoinRoom('${k}')" class="btn-cyber" style="padding: 10px 25px;">[ NGỒI VÀO BÀN ]</button>` : '<span class="text-red">ĐÃ ĐẦY CHỖ</span>'}
-                </div>`;
-            }
-        }
-        
-        document.getElementById('tl-room-list').innerHTML = lobbyHtml || '<p style="color:#888; grid-column: span 2; text-align:center;">Chưa có đại gia nào mở sòng.</p>';
-        if(amIInRoom) { document.getElementById('tl-lobby').style.display = 'none'; document.getElementById('tl-board').style.display = 'block'; } 
-        else { document.getElementById('tl-lobby').style.display = 'block'; document.getElementById('tl-board').style.display = 'none'; myTlRoomId = null; if(tlTimerInterval) clearInterval(tlTimerInterval); }
-    });
+async function checkPenaltyEnd() { 
+    document.getElementById('fb-commentary').innerText = "LOẠT SÚT KẾT THÚC!"; 
+    if (window.fbScored >= 3) { 
+        let pnl = window.fbBet * 2; // Thắng ăn x2
+        const s = await get(ref(db,`users/${uid}`)); await update(ref(db,`users/${uid}`),{pp: (Number(s.val().pp)||0) + pnl}); 
+        window.logGame(uid,localStorage.getItem('uname'),"Penalty",window.fbBet,pnl-window.fbBet,"Thắng"); 
+        window.showResult("CHIẾN THẮNG KÈO",`Bạn đã sút thành công ${window.fbScored}/5 quả!\nNhận được ${pnl.toLocaleString()} PP!`,true); 
+    } else { 
+        window.logGame(uid,localStorage.getItem('uname'),"Penalty",window.fbBet,-window.fbBet,"Thua"); 
+        window.showResult("THẤT BẠI",`Bạn chỉ sút vào ${window.fbScored}/5 quả.\nBạn mất trắng ${window.fbBet.toLocaleString()} PP.`,false); 
+    } 
+    setTimeout(() => window.openFootballGame(), 1500); 
 }
 
-window.tlCreateRoom = async () => {
-    let bet = parseInt(prompt("Nhập PP cược TỐI THIỂU cho 1 ván:")); if(isNaN(bet) || bet <= 0) return;
-    const s = await get(ref(db, `users/${uid}`)); const u = s.val(); if((Number(u.pp)||0) < bet) return alert("Không đủ PP!");
-    await update(ref(db, `users/${uid}`), { pp: (Number(u.pp)||0) - bet });
-    const roomId = 'TL_' + Date.now();
-    await set(ref(db, `tienlen_rooms/${roomId}`), { creator: uid, creatorName: u.name, bet: bet, status: 'WAITING', players: { [uid]: { name: u.name, avatar: u.avatar || 'https://i.pravatar.cc/150', isCreator: true } }, playerOrder: [uid], pot: bet });
-};
-window.tlJoinRoom = async (roomId) => {
-    const s = await get(ref(db, `tienlen_rooms/${roomId}`)); const r = s.val(); if(!r || r.status !== 'WAITING') return alert("Bàn đang chơi hoặc không tồn tại!");
-    if(Object.keys(r.players).length >= 4) return alert("Bàn đã đủ 4 tụ!");
-    const uS = await get(ref(db, `users/${uid}`)); const u = uS.val(); if((Number(u.pp)||0) < r.bet) return alert("Bạn không đủ lúa vô sòng!");
-    await update(ref(db, `users/${uid}`), { pp: (Number(u.pp)||0) - r.bet });
-    const newOrder = [...(r.playerOrder || []), uid];
-    await update(ref(db, `tienlen_rooms/${roomId}/players/${uid}`), { name: u.name, avatar: u.avatar || 'https://i.pravatar.cc/150' });
-    await update(ref(db, `tienlen_rooms/${roomId}`), { playerOrder: newOrder, pot: r.pot + r.bet });
-};
+
+// ✈️ MÁY BAY & 📈 CRYPTO
+window.openAirplaneGame=()=>{document.getElementById('airplane-modal').style.display='flex';document.getElementById('flight-multiplier').innerText='x1.00';document.getElementById('flight-multiplier').style.color='rgba(255,255,255,0.1)';document.getElementById('p-plane').className='fas fa-space-shuttle player-plane';document.getElementById('p-plane').style.left='10px';document.getElementById('p-plane').style.bottom='15px';document.getElementById('p-plane').style.display='block';document.getElementById('p-boom').style.display='none';document.getElementById('flight-bet').disabled=false;document.getElementById('flight-bet').value='';const btn=document.getElementById('flight-action-btn');btn.innerText='[ ĐẶT CƯỢC & CẤT CÁNH ]';btn.onclick=window.startFlight;btn.style.borderColor='var(--neon-gold)';btn.style.color='var(--neon-gold)';}; window.closeAirplaneGame=()=>{if(window.isFlying)return alert("Đang bay không được nhảy!");document.getElementById('airplane-modal').style.display='none';};
+window.startFlight=async()=>{if(window.isFlying)return;const b=parseInt(document.getElementById('flight-bet').value);if(isNaN(b)||b<=0)return window.showResult("LỖI","Cược không hợp lệ!",false);const s=await get(ref(db,`users/${uid}`));const cPP=Number(s.val().pp)||0;if(cPP<b)return window.showResult("NGHÈO","Không đủ PP!",false);await update(ref(db,`users/${uid}`),{pp:cPP-b});window.flightBetAmount=b;window.isFlying=true;const e=100/(Math.random()*100);window.crashPoint=parseFloat(Math.max(1.00,Math.min(100.00,e)).toFixed(2));if(Math.random()<0.05)window.crashPoint=1.00;document.getElementById('flight-bet').disabled=true;document.getElementById('p-plane').classList.add('flying');const btn=document.getElementById('flight-action-btn');btn.innerText='[ NHẢY DÙ CHỐT LỜI! ]';btn.style.borderColor='var(--neon-green)';btn.style.color='var(--neon-green)';btn.onclick=window.cashOutFlight;window.currentMultiplier=1.00;let sp=0.005;let pL=10;let pB=15;window.flightInterval=setInterval(()=>{window.currentMultiplier+=sp;sp+=0.0002;document.getElementById('flight-multiplier').innerText=`x${window.currentMultiplier.toFixed(2)}`;pL+=0.5;pB+=0.2;if(pL>80)pL=80;if(pB>80)pB=80;const plane=document.getElementById('p-plane');plane.style.left=pL+'%';plane.style.bottom=pB+'%';if(window.currentMultiplier>=window.crashPoint){clearInterval(window.flightInterval);window.isFlying=false;plane.classList.remove('flying');plane.style.display='none';const boom=document.getElementById('p-boom');boom.style.left=pL+'%';boom.style.bottom=pB+'%';boom.style.display='block';document.getElementById('flight-multiplier').style.color='var(--neon-red)';btn.innerText='MÁY BAY NỔ!';btn.onclick=null;btn.style.borderColor='var(--neon-red)';btn.style.color='var(--neon-red)';window.logGame(uid,localStorage.getItem('uname'),"Crash",window.flightBetAmount,-window.flightBetAmount,"Cháy");setTimeout(()=>{window.showResult("CHÁY NỔ",`Máy bay nổ ở x${window.crashPoint.toFixed(2)}.\nMất trắng ${window.flightBetAmount.toLocaleString()} PP!`,false);window.openAirplaneGame();},1500);}},50);};
+window.cashOutFlight=async()=>{if(!window.isFlying)return;clearInterval(window.flightInterval);window.isFlying=false;document.getElementById('p-plane').classList.remove('flying');const w=Math.floor(window.flightBetAmount*window.currentMultiplier);const s=await get(ref(db,`users/${uid}`));await update(ref(db,`users/${uid}`),{pp:(Number(s.val().pp)||0)+w});document.getElementById('flight-multiplier').style.color='var(--neon-gold)';const btn=document.getElementById('flight-action-btn');btn.innerText=`ĐÃ NHẢY X${window.currentMultiplier.toFixed(2)}`;btn.onclick=null;btn.style.borderColor='#555';btn.style.color='#555';window.logGame(uid,localStorage.getItem('uname'),"Crash",window.flightBetAmount,w-window.flightBetAmount,`Nhảy x${window.currentMultiplier.toFixed(2)}`);setTimeout(()=>{window.showResult("SỐNG SÓT",`Nhảy an toàn x${window.currentMultiplier.toFixed(2)}.\nĂn ${w.toLocaleString()} PP!`,true);window.openAirplaneGame();},1500);};
+
+window.openCryptoGame=()=>{if(window.isCryptoTrading)return;document.getElementById('crypto-modal').style.display='flex';document.getElementById('crypto-multiplier').innerText='x1.00';document.getElementById('crypto-multiplier').style.color='var(--neon-gold)';document.getElementById('crypto-rugpull').style.display='none';const btn=document.getElementById('crypto-action-btn');btn.innerText='[ 🚀 MUA VÀO & GỒNG LÃI ]';btn.onclick=window.startCryptoLive;btn.style.borderColor='var(--neon-gold)';btn.style.color='var(--neon-gold)';document.getElementById('crypto-bet').disabled=false;document.getElementById('crypto-bet').value='';const canvas=document.getElementById('cryptoCanvas');const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);}; window.closeCryptoGame=()=>{if(window.isCryptoTrading)return alert("Đang gồng lãi, không thể thoát!");document.getElementById('crypto-modal').style.display='none';};
+window.startCryptoLive=async()=>{if(window.isCryptoTrading)return;const b=parseInt(document.getElementById('crypto-bet').value);if(isNaN(b)||b<=0)return window.showResult("LỖI","Cược không hợp lệ!",false);const s=await get(ref(db,`users/${uid}`));const cPP=Number(s.val().pp)||0;if(cPP<b)return window.showResult("NGHÈO","Không đủ vốn!",false);await update(ref(db,`users/${uid}`),{pp:cPP-b});window.cBet=b;window.isCryptoTrading=true;const e=100/(Math.random()*100);window.cCrash=parseFloat(Math.max(1.00,Math.min(100.00,e)).toFixed(2));if(Math.random()<0.08)window.cCrash=1.00;document.getElementById('crypto-bet').disabled=true;const btn=document.getElementById('crypto-action-btn');btn.innerText='[ 💰 CHỐT LỜI NGAY! ]';btn.style.borderColor='var(--neon-green)';btn.style.color='var(--neon-green)';btn.onclick=window.cashOutCrypto;window.cMult=1.00;window.cryptoData=[{x:0,y:300}];window.chartX=0;let sp=0.003;const canvas=document.getElementById('cryptoCanvas');const ctx=canvas.getContext('2d');window.cryptoInterval=setInterval(()=>{window.cMult+=sp;sp+=0.0002;let vM=window.cMult+(Math.random()*0.05-0.02);document.getElementById('crypto-multiplier').innerText=`x${Math.max(1.00,vM).toFixed(2)}`;window.chartX+=3;let cY=300-((window.cMult-1)*30);if(cY<20)cY=20+Math.random()*10;window.cryptoData.push({x:window.chartX,y:cY});ctx.clearRect(0,0,canvas.width,canvas.height);ctx.beginPath();ctx.moveTo(window.cryptoData[0].x,window.cryptoData[0].y);ctx.strokeStyle='#00ff80';ctx.lineWidth=3;ctx.shadowBlur=10;ctx.shadowColor='#00ff80';for(let i=1;i<window.cryptoData.length;i++){ctx.lineTo(window.cryptoData[i].x,window.cryptoData[i].y);}ctx.stroke();if(window.chartX>=660)window.cryptoData.shift();if(window.cMult>=window.cCrash){clearInterval(window.cryptoInterval);window.isCryptoTrading=false;document.getElementById('crypto-multiplier').style.color='var(--neon-red)';document.getElementById('crypto-rugpull').style.display='block';btn.innerText='CHÁY TÀI KHOẢN!';btn.onclick=null;btn.style.borderColor='var(--neon-red)';btn.style.color='var(--neon-red)';ctx.lineTo(window.chartX,300);ctx.strokeStyle='red';ctx.shadowColor='red';ctx.stroke();window.logGame(uid,localStorage.getItem('uname'),"Crypto",window.cBet,-window.cBet,"Rug Pull");setTimeout(()=>{window.showResult("RUG PULL!",`Úp sọt ở x${window.cCrash.toFixed(2)}.\nMất trắng ${window.cBet.toLocaleString()} PP!`,false);window.openCryptoGame();},1500);}},40);};
+window.cashOutCrypto=async()=>{if(!window.isCryptoTrading)return;clearInterval(window.cryptoInterval);window.isCryptoTrading=false;const w=Math.floor(window.cBet*window.cMult);const s=await get(ref(db,`users/${uid}`));await update(ref(db,`users/${uid}`),{pp:(Number(s.val().pp)||0)+w});document.getElementById('crypto-multiplier').style.color='var(--neon-gold)';const btn=document.getElementById('crypto-action-btn');btn.innerText='ĐÃ CHỐT LỜI X'+window.cMult.toFixed(2);btn.onclick=null;btn.style.borderColor='#555';btn.style.color='#555';window.logGame(uid,localStorage.getItem('uname'),"Crypto",window.cBet,w-window.cBet,`Chốt x${window.cMult.toFixed(2)}`);setTimeout(()=>{window.showResult("CHỐT LỜI",`Xả hàng an toàn x${window.cMult.toFixed(2)}.\nĂn ${w.toLocaleString()} PP!`,true);window.openCryptoGame();},1000);};
+
+// 🃏 TIẾN LÊN MIỀN NAM VIP (HIỂN THỊ PHÒNG Ở DASHBOARD)
+let myTlRoomId=null; let tlTimerInterval=null; let tlCurrentTurnStartTime=0; let windowLastHandSig=""; let selectedCardsIndices=[];
+const SUITS = ['♠', '♣', '♦', '♥']; const RANKS = ['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+window.closeTienLenModal=()=>{document.getElementById('tienlen-modal').style.display='none';if(tlTimerInterval)clearInterval(tlTimerInterval);};
+function listenTienLenRooms(){
+    onValue(ref(db,'tienlen_rooms'),s=>{
+        const rs=s.val()||{};let h="";let am=false;
+        for(let k in rs){
+            const r=rs[k];const ps=r.players||{};const im=Object.keys(ps).includes(uid);
+            if(im){am=true;myTlRoomId=k;renderTlBoard(r);document.getElementById('tienlen-modal').style.display='flex';}
+            if(r.status==='WAITING'&&!im){h+=`<div class="room-item" style="padding:10px; flex-direction:column; align-items:flex-start;"><div style="margin-bottom:8px;"><strong class="text-gold">BÀN: ${r.creatorName}</strong><br><small>Cược: ${r.bet.toLocaleString()} PP | ${Object.keys(ps).length}/4</small></div>${Object.keys(ps).length<4?`<button onclick="tlJoinRoom('${k}')" class="btn-cyber w-100" style="padding:8px;">[ VÀO ]</button>`:'<span class="text-red">ĐẦY</span>'}</div>`;}
+        }
+        if(document.getElementById('tl-room-list')) document.getElementById('tl-room-list').innerHTML=h||'<p style="text-align:center; color:#888; font-size:12px;">Chưa có bàn.</p>';
+        if(!am){myTlRoomId=null;if(tlTimerInterval)clearInterval(tlTimerInterval);}
+    });
+}
+function getCardHTML(v, iA=false, id=-1){const r=RANKS[Math.floor(v/4)];const s=SUITS[v%4];const iR=(v%4===2||v%4===3);const iAttr=id>=0?`id="my-card-${id}" onclick="tlToggleCard(${id})"`:'';const sAttr=iA?`style="--rot: ${(Math.random()*15-7.5)}deg; transform: rotate(var(--rot)); position:relative;"`:`style="position:relative;"`;return `<div ${iAttr} class="tl-card ${iR?'red-suit':'black-suit'} ${iA?'tl-played-card':''}" ${sAttr}><div class="rank">${r}</div><div class="suit">${s}</div></div>`;}
+window.tlToggleCard=(i)=>{const e=document.getElementById(`my-card-${i}`);if(selectedCardsIndices.includes(i)){selectedCardsIndices=selectedCardsIndices.filter(x=>x!==i);e.classList.remove('selected');}else{selectedCardsIndices.push(i);e.classList.add('selected');}};
+function renderTlBoard(r){const pO=r.playerOrder||[];const mI=pO.indexOf(uid);if(mI===-1)return;['top','left','right'].forEach(p=>document.getElementById(`tl-seat-${p}`).innerHTML='');document.getElementById('tl-start-btn').style.display=(r.status==='WAITING'&&r.creator===uid)?'block':'none';document.getElementById('tl-pot-display').innerText=`CƯỢC: ${r.pot.toLocaleString()} PP`;const isT=(r.status==='PLAYING'&&r.turn===uid);document.getElementById('tl-controls').style.display=isT?'flex':'none';document.getElementById('tl-timer-bar-container').style.display=(r.status==='PLAYING')?'block':'none';const ps=pO.length===2?['bottom','top']:pO.length===3?['bottom','right','left']:['bottom','right','top','left'];pO.forEach((pU,idx)=>{const rI=(idx-mI+pO.length)%pO.length;const p=ps[rI];const pI=r.players[pU];const cC=r.hands&&r.hands[pU]?r.hands[pU].length:13;let h=`<div class="tl-player-badge ${r.turn===pU?'active-turn':''} ${(r.passList||[]).includes(pU)?'passed':''}"><img src="${pI.avatar}" style="width:50px;border-radius:50%;"><div><span class="text-blue">${pI.name}</span><br><small class="text-gold">${cC} lá</small></div></div>`;if(p!=='bottom'&&r.status==='PLAYING'){h+=`<div style="display:flex;justify-content:center;gap:5px;margin-top:10px;">${Array(cC).fill('<div class="tl-card-back"></div>').join('')}</div>`;document.getElementById(`tl-seat-${p}`).innerHTML=h;}else if(p==='bottom'){document.getElementById('tl-my-info').innerHTML=h;if(r.status==='PLAYING'&&r.hands&&r.hands[uid]){const mh=r.hands[uid];const sg=mh.join(',');if(windowLastHandSig!==sg){selectedCardsIndices=[];document.getElementById('tl-my-hand').innerHTML=mh.map((v,i)=>getCardHTML(v,false,i)).join('');windowLastHandSig=sg;}}else{document.getElementById('tl-my-hand').innerHTML='';windowLastHandSig="";}}});if(r.status==='PLAYING'){document.getElementById('tl-center-pile').innerHTML=(r.currentPile||[]).map(v=>getCardHTML(v,true)).join('');if(isT){const mP=(!r.currentPile||r.currentPile.length===0||r.lastPlayedBy===uid);document.getElementById('tl-turn-msg').innerHTML=`<span style="color:#00ff80">ĐÁNH ĐI!</span> ${mP?'<br><small class="text-gold">(Cầm cái)</small>':''}`;}else document.getElementById('tl-turn-msg').innerText=`Đợi ${r.players[r.turn].name}...`;}
+if(r.status==='ENDED'){
+    document.getElementById('tl-controls').style.display='none';
+    if(r.winner===uid&&!window.hasClaimedTl){
+        document.getElementById('tl-turn-msg').innerHTML=`<h1 class="text-gold">🎉 BẠN ĐÃ TỚI! 🎉</h1>`;
+        window.hasClaimedTl=true;
+        setTimeout(async()=>{const s=await get(ref(db,`users/${uid}`));await update(ref(db,`users/${uid}`),{pp:(Number(s.val().pp)||0)+r.pot});window.logGame(uid,localStorage.getItem('uname'),"Tiến Lên",r.bet,r.pot-r.bet,"Thắng");window.showResult("THẮNG BÀI!",`Ăn ${r.pot.toLocaleString()} PP!`,true);await remove(ref(db,`tienlen_rooms/${myTlRoomId}`));window.hasClaimedTl=false;},3000);
+    }else if(r.winner!==uid&&!window.hasClaimedTl){
+        document.getElementById('tl-turn-msg').innerHTML=`<h1 class="text-red">🔥 ĐÃ BỊ TRỪ ${r.bet.toLocaleString()} PP! 🔥</h1>`;
+        window.hasClaimedTl=true;
+        setTimeout(()=>{window.logGame(uid,localStorage.getItem('uname'),"Tiến Lên",r.bet,-r.bet,"Thua");window.showResult("THUA BÀI!",`Người chơi ${r.players[r.winner].name} đã Tới!\nBạn bị trừ ${r.bet.toLocaleString()} PP!`,false);window.hasClaimedTl=false;},3000);
+    }
+}}
+function analyzeCards(c){if(!c||c.length===0)return null;c.sort((a,b)=>a-b);const r=c.map(x=>Math.floor(x/4));const sR=r.every(x=>x===r[0]);if(c.length===1)return{type:'single',highCard:c[0],count:1};if(sR&&c.length===2)return{type:'pair',highCard:c[1],count:2};if(sR&&c.length===3)return{type:'triple',highCard:c[2],count:3};if(sR&&c.length===4)return{type:'quad',highCard:c[3],count:4};let iS=true;for(let i=1;i<r.length;i++){if(r[i]!==r[i-1]+1)iS=false;}if(iS&&c.length>=3&&r[r.length-1]<12)return{type:'straight',highCard:c[c.length-1],count:c.length};if(c.length>=6&&c.length%2===0){let iD=true;let pR=[];for(let i=0;i<c.length;i+=2){if(Math.floor(c[i]/4)!==Math.floor(c[i+1]/4))iD=false;pR.push(Math.floor(c[i]/4));}if(iD){for(let i=1;i<pR.length;i++){if(pR[i]!==pR[i-1]+1)iD=false;}if(iD&&pR[pR.length-1]<12)return{type:'doithong',pairs:c.length/2,highCard:c[c.length-1],count:c.length};}}return null;}
+function canBeat(p,pl){if(!pl)return true;const pR=Math.floor(pl.highCard/4);if(pl.type==='single'&&pR===12){if(p.type==='doithong'&&p.pairs===3)return true;if(p.type==='quad')return true;if(p.type==='doithong'&&p.pairs===4)return true;}if(pl.type==='pair'&&pR===12){if(p.type==='quad')return true;if(p.type==='doithong'&&p.pairs===4)return true;}if(pl.type==='doithong'&&pl.pairs===3){if(p.type==='quad'||(p.type==='doithong'&&p.pairs===4))return true;}if(pl.type==='quad'&&p.type==='doithong'&&p.pairs===4)return true;if(p.type===pl.type&&p.count===pl.count)return p.highCard>pl.highCard;return false;}
+function manageTlTimer(r){if(r.status!=='PLAYING'){if(tlTimerInterval)clearInterval(tlTimerInterval);return;}if(tlCurrentTurnStartTime!==r.turnStartTime){tlCurrentTurnStartTime=r.turnStartTime;if(tlTimerInterval)clearInterval(tlTimerInterval);tlTimerInterval=setInterval(()=>{const tL=Math.max(0,30-((Date.now()-r.turnStartTime)/1000));const p=(tL/30)*100;const b=document.getElementById('tl-timer-bar');b.style.width=`${p}%`;b.style.background=p>50?'#00ff80':p>20?'#ffd700':'#ff003c';if(tL<=0&&r.turn===uid){clearInterval(tlTimerInterval);if(!r.currentPile||r.currentPile.length===0){selectedCardsIndices=[0];window.tlPlayCards(true);}else window.tlPassTurn(true);}},1000);}}
+window.tlCreateRoom=async()=>{let b=parseInt(prompt("Cược PP:"));if(isNaN(b)||b<=0)return;const s=await get(ref(db,`users/${uid}`));const u=s.val();if((Number(u.pp)||0)<b)return alert("Không đủ PP!");await update(ref(db,`users/${uid}`),{pp:(Number(u.pp)||0)-b});const id='TL_'+Date.now();await set(ref(db,`tienlen_rooms/${id}`),{creator:uid,creatorName:u.name,bet:b,status:'WAITING',players:{[uid]:{name:u.name,avatar:u.avatar||'',isCreator:true}},playerOrder:[uid],pot:b});};
+window.tlJoinRoom=async(id)=>{const s=await get(ref(db,`tienlen_rooms/${id}`));const r=s.val();if(!r||r.status!=='WAITING'||Object.keys(r.players).length>=4)return alert("Bàn đang chơi hoặc đã đầy!");const us=await get(ref(db,`users/${uid}`));const u=us.val();if((Number(u.pp)||0)<r.bet)return alert("Bạn không đủ PP!");await update(ref(db,`users/${uid}`),{pp:(Number(u.pp)||0)-r.bet});await update(ref(db,`tienlen_rooms/${id}/players/${uid}`),{name:u.name,avatar:u.avatar||''});await update(ref(db,`tienlen_rooms/${id}`),{playerOrder:[...(r.playerOrder||[]),uid],pot:r.pot+r.bet});document.getElementById('tienlen-modal').style.display='flex';};
 window.tlLeaveGame = async () => {
     if(!myTlRoomId) return window.closeTienLenModal();
-    const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
-    if(r.status === 'PLAYING') return alert("Đang trong ván. Chạy ngang mất sạch cược đó!");
-    if(r.status === 'WAITING') {
-        const uS = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(uS.val().pp)||0) + r.bet });
-        await remove(ref(db, `tienlen_rooms/${myTlRoomId}/players/${uid}`));
-        const newOrder = r.playerOrder.filter(id => id !== uid);
-        if(newOrder.length === 0) await remove(ref(db, `tienlen_rooms/${myTlRoomId}`));
-        else await update(ref(db, `tienlen_rooms/${myTlRoomId}`), { playerOrder: newOrder, pot: r.pot - r.bet });
-    }
+    const s = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = s.val();
+    if(!r) { myTlRoomId = null; window.closeTienLenModal(); return; }
+    if(r.status === 'PLAYING') return alert("Đang đánh không được chạy!");
+    if (r.creator === uid || (r.playerOrder||[]).length <= 1) { await remove(ref(db, `tienlen_rooms/${myTlRoomId}`)); } else { await remove(ref(db, `tienlen_rooms/${myTlRoomId}/players/${uid}`)); const nO = (r.playerOrder||[]).filter(x => x !== uid); await update(ref(db, `tienlen_rooms/${myTlRoomId}`), { playerOrder: nO, pot: r.pot - r.bet }); }
+    if (r.status === 'WAITING') { const us = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(us.val().pp) || 0) + r.bet }); }
+    myTlRoomId = null; window.closeTienLenModal(); alert("Đã rời phòng!");
 };
+window.tlStartGame=async()=>{if(!myTlRoomId)return;const s=await get(ref(db,`tienlen_rooms/${myTlRoomId}`));const r=s.val();if(Object.keys(r.players).length<2)return alert("Cần tối thiểu 2 người!");let d=Array.from({length:52},(_,i)=>i);for(let i=51;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}let h={};let c=0;r.playerOrder.forEach(p=>{h[p]=d.slice(c,c+13).sort((a,b)=>a-b);c+=13;});await update(ref(db,`tienlen_rooms/${myTlRoomId}`),{status:'PLAYING',hands:h,turn:r.playerOrder[0],turnStartTime:Date.now(),currentPile:[],passList:[],lastPlayedBy:''});};
+window.tlPlayCards=async(a=false)=>{if(selectedCardsIndices.length===0)return;const s=await get(ref(db,`tienlen_rooms/${myTlRoomId}`));const r=s.val();let mh=r.hands[uid];let cP=selectedCardsIndices.map(i=>mh[i]).sort((x,y)=>x-y);const pO=analyzeCards(cP);if(!pO)return;if(r.currentPile&&r.currentPile.length>0&&r.lastPlayedBy!==uid){if(!canBeat(pO,analyzeCards(r.currentPile)))return;}let nH=mh.filter((_,i)=>!selectedCardsIndices.includes(i));selectedCardsIndices=[];windowLastHandSig="";let nI=(r.playerOrder.indexOf(uid)+1)%r.playerOrder.length;let nU=r.playerOrder[nI];let l=0;while((r.passList||[]).includes(nU)&&l<4){nI=(nI+1)%r.playerOrder.length;nU=r.playerOrder[nI];l++;}let up={[`hands/${uid}`]:nH,currentPile:cP,lastPlayedBy:uid,turn:nU,turnStartTime:Date.now()};if(nH.length===0){up.status='ENDED';up.winner=uid;}await update(ref(db,`tienlen_rooms/${myTlRoomId}`),up);};
+window.tlPassTurn=async(a=false)=>{const s=await get(ref(db,`tienlen_rooms/${myTlRoomId}`));const r=s.val();if(!r.currentPile||r.currentPile.length===0||r.lastPlayedBy===uid)return;let pL=r.passList||[];pL.push(uid);let nI=(r.playerOrder.indexOf(uid)+1)%r.playerOrder.length;let nU=r.playerOrder[nI];let l=0;while(pL.includes(nU)&&l<4){nI=(nI+1)%r.playerOrder.length;nU=r.playerOrder[nI];l++;}let up={passList:pL,turn:nU,turnStartTime:Date.now()};if(pL.length>=r.playerOrder.length-1){up.passList=[];up.currentPile=[];}await update(ref(db,`tienlen_rooms/${myTlRoomId}`),up);};
 
-window.tlStartGame = async () => {
-    if(!myTlRoomId) return; const s = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = s.val();
-    if(Object.keys(r.players).length < 2) return alert("Phải đủ tay (Min 2 người) mới chia bài được!");
-    let deck = Array.from({length: 52}, (_, i) => i);
-    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-    let hands = {}; let i = 0;
-    r.playerOrder.forEach(pUid => { hands[pUid] = deck.slice(i, i + 13).sort((a,b) => a - b); i += 13; });
-    const firstTurn = r.playerOrder[Math.floor(Math.random() * r.playerOrder.length)];
-    await update(ref(db, `tienlen_rooms/${myTlRoomId}`), { status: 'PLAYING', hands: hands, turn: firstTurn, turnStartTime: Date.now(), currentPile: [], passList: [], lastPlayedBy: '' });
-};
+// ♠️ BLACKJACK 3D LIVE
+let myBjRoomId = null;
+window.closeBlackjackModal = () => { document.getElementById('bj-modal').style.display = 'none'; };
 
-function analyzeCards(cards) {
-    if(!cards || cards.length === 0) return null;
-    cards.sort((a,b) => a - b);
-    const ranks = cards.map(c => Math.floor(c/4));
-    const isSameRank = ranks.every(r => r === ranks[0]);
-    if(cards.length === 1) return { type: 'single', highCard: cards[0], count: 1 };
-    if(isSameRank && cards.length === 2) return { type: 'pair', highCard: cards[1], count: 2 };
-    if(isSameRank && cards.length === 3) return { type: 'triple', highCard: cards[2], count: 3 };
-    if(isSameRank && cards.length === 4) return { type: 'quad', highCard: cards[3], count: 4 };
-
-    let isStraight = true; for(let i = 1; i < ranks.length; i++) { if(ranks[i] !== ranks[i-1] + 1) isStraight = false; }
-    if(isStraight && cards.length >= 3 && ranks[ranks.length-1] < 12) { return { type: 'straight', highCard: cards[cards.length-1], count: cards.length }; }
-    
-    if(cards.length >= 6 && cards.length % 2 === 0) {
-        let isDoiThong = true; let pairRanks = [];
-        for(let i=0; i<cards.length; i+=2) { if(Math.floor(cards[i]/4) !== Math.floor(cards[i+1]/4)) isDoiThong = false; pairRanks.push(Math.floor(cards[i]/4)); }
-        if(isDoiThong) {
-            for(let i=1; i<pairRanks.length; i++) { if(pairRanks[i] !== pairRanks[i-1] + 1) isDoiThong = false; }
-            if(isDoiThong && pairRanks[pairRanks.length-1] < 12) return { type: 'doithong', pairs: cards.length/2, highCard: cards[cards.length-1], count: cards.length };
-        }
-    }
-    return null;
+function getBjInfo(cards) { 
+    if(cards.length === 2 && cards.every(v => Math.floor(v/4) === 11)) return { score: 22, type: 'XIBANG' };
+    let score = 0, aces = 0; 
+    cards.forEach(val => { let r = Math.floor(val/4); if(r <= 7) score += (r + 3); else if(r >= 8 && r <= 10) score += 10; else if(r === 12) score += 2; else if(r === 11) { aces++; } }); 
+    if(cards.length >= 3) { score += aces; } else { for(let i=0; i<aces; i++) { if(score + 11 <= 21) score += 11; else if(score + 10 <= 21 && aces===1) score += 10; else score += 1; } }
+    if(cards.length === 2 && score === 21 && aces > 0) return { score: 21, type: 'XIDACH' }; 
+    if(score > 21) return { score, type: 'QUAC' }; 
+    if(cards.length === 5 && score <= 21) return { score, type: 'NGULINH' }; 
+    return { score, type: 'NORMAL' }; 
 }
 
-function canBeat(playObj, pileObj) {
-    if(!pileObj) return true; 
-    const pileRank = Math.floor(pileObj.highCard/4);
-    if(pileObj.type === 'single' && pileRank === 12) {
-        if(playObj.type === 'doithong' && playObj.pairs === 3) return true;
-        if(playObj.type === 'quad') return true;
-        if(playObj.type === 'doithong' && playObj.pairs === 4) return true;
-    }
-    if(pileObj.type === 'pair' && pileRank === 12) {
-        if(playObj.type === 'quad') return true;
-        if(playObj.type === 'doithong' && playObj.pairs === 4) return true;
-    }
-    if(pileObj.type === 'doithong' && pileObj.pairs === 3) { if(playObj.type === 'quad' || (playObj.type === 'doithong' && playObj.pairs === 4)) return true; }
-    if(pileObj.type === 'quad' && playObj.type === 'doithong' && playObj.pairs === 4) return true;
-
-    if(playObj.type === pileObj.type && playObj.count === pileObj.count) { return playObj.highCard > pileObj.highCard; }
-    return false;
+function compareBj(p, d) { if(p.type === 'QUAC') return -1; if(d.type === 'QUAC') return 1; const r = {'XIBANG':5, 'XIDACH':4, 'NGULINH':3, 'NORMAL':1}; if(r[p.type] > r[d.type]) return 1; if(r[p.type] < r[d.type]) return -1; if(p.score > d.score) return 1; if(p.score < d.score) return -1; return 0; }
+function getBjCardHTML(val, isHidden = false, animDelay = 0) { if(isHidden) return `<div class="tl-card-back tl-played-card" style="position:relative; box-shadow:-2px 2px 5px rgba(0,0,0,0.5); animation-delay: ${animDelay}s;"></div>`; const r = RANKS[Math.floor(val / 4)]; const s = SUITS[val % 4]; const iR = (val % 4 === 2 || val % 4 === 3); return `<div class="tl-card ${iR ? 'red-suit' : 'black-suit'} tl-played-card" style="position:relative; animation-delay: ${animDelay}s;"><div class="rank">${r}</div><div class="suit">${s}</div></div>`; }
+function listenBlackjackRooms() { 
+    onValue(ref(db, 'blackjack_rooms'), snap => { 
+        const rooms = snap.val() || {}; let h = ""; let amI = false; 
+        for(let k in rooms) { 
+            const r = rooms[k]; const isMe = r.players && Object.keys(r.players).includes(uid); 
+            if(isMe) { amI = true; myBjRoomId = k; renderBjBoard(r, k); document.getElementById('bj-modal').style.display = 'flex';} 
+            if((r.status === 'WAITING' || r.status === 'PLAYING') && !isMe) { 
+                let stTxt = r.status === 'WAITING' ? `<span class="text-green">ĐANG CHỜ</span>` : `<span class="text-red">ĐANG CHƠI</span>`; 
+                h += `<div class="room-item" style="padding:10px; flex-direction:column; align-items:flex-start;"><div style="margin-bottom:8px;"><strong class="text-gold">BÀN: ${r.creatorName}</strong><br><small>Cược: ${r.bet.toLocaleString()} PP | ${stTxt}</small></div>${(!r.players || Object.keys(r.players).length < 5) ? `<button onclick="bjJoinRoom('${k}')" class="btn-cyber w-100" style="padding:8px;">[ VÀO SÒNG ]</button>` : `<span class="text-red">FULL 5/5</span>`}</div>`; 
+            } 
+        } 
+        if(document.getElementById('bj-room-list')) document.getElementById('bj-room-list').innerHTML = h || '<p style="text-align:center; color:#888; font-size:12px;">Chưa có sòng.</p>'; 
+        if(!amI) myBjRoomId = null; 
+    }); 
 }
-
-function getCardHTML(val, isAnimated = false, index = -1) {
-    const rank = RANKS[Math.floor(val / 4)]; const suit = SUITS[val % 4]; const isRed = (val % 4 === 2 || val % 4 === 3);
-    const idAttr = index >= 0 ? `id="my-card-${index}" onclick="tlToggleCard(${index})"` : '';
-    const styleAttr = isAnimated ? `style="--rot: ${(Math.random()*20 - 10)}deg; left: ${Math.random()*60 - 30}px; position:absolute;"` : '';
-    return `<div ${idAttr} class="tl-card ${isRed ? 'red-suit' : 'black-suit'} ${isAnimated ? 'tl-played-card' : ''}" ${styleAttr}><div class="rank">${rank}</div><div class="suit">${suit}</div></div>`;
+function renderBjBoard(r, rId) {
+    if(!r.players || !r.players[uid]) return;
+    document.getElementById('bj-start-btn').style.display = (r.status === 'WAITING' && r.creator === uid) ? 'block' : 'none';
+    let dH = ''; if(r.dealer && r.dealer.hand) { dH = r.dealer.hand.map((v, i) => getBjCardHTML(v, r.dealer.isHidden && i === 1, i*0.2)).join(''); document.getElementById('bj-dealer-score').innerText = r.dealer.isHidden ? '?' : getBjInfo(r.dealer.hand).score + ' đ'; } else { document.getElementById('bj-dealer-score').innerText = '?'; } document.getElementById('bj-dealer-cards').innerHTML = dH;
+    let pH = ''; Object.keys(r.players).forEach((pU) => { let pD = r.players[pU]; let isActivePlaying = (r.status === 'PLAYING' && r.activePlayers && r.activePlayers.includes(pU)); let isT = (isActivePlaying && r.activePlayers[r.turnIdx] === pU); let hA = pD.hand || []; let hH = hA.map((v, i) => getBjCardHTML(v, false, i*0.2)).join(''); let bC = isT ? 'active-turn' : ''; let inf = getBjInfo(hA); let sL = ''; if(pD.status === 'WAITING' || pD.status === 'SPECTATOR') sL = 'Đang đợi / Khán giả'; else sL = inf.type==='QUAC'?'QUẮC BÙ':inf.type==='XIBANG'?'XÌ BÀNG':inf.type==='XIDACH'?'XÌ DÁCH':inf.type==='NGULINH'?'NGŨ LINH':inf.score + ' đ'; if(['STOOD','BUSTED','BLACKJACK','SPECTATOR'].includes(pD.status)) bC += ' passed'; pH += `<div style="display:flex; flex-direction:column; align-items:center;"><div style="margin-bottom:15px; display:flex; justify-content:center; min-height:120px; gap: 15px;">${hH}</div><div class="tl-player-badge ${bC}" style="min-width:120px; flex-direction:column; gap:5px; text-align:center;"><img src="${pD.avatar}" style="width:45px; height:45px; border-radius:50%; border:2px solid ${isT?'#ffd700':'#fff'}; margin-bottom:5px;"><b class="text-blue" style="font-size:12px;">${pD.name}</b><span class="text-gold" style="font-size:10px;">${r.bet.toLocaleString()} PP</span><span class="badge" style="border-color:#ffd700; color:#ffd700; font-size:11px;">${sL}</span></div></div>`; }); document.getElementById('bj-players-area').innerHTML = pH;
+    if (r.status === 'PLAYING' && r.activePlayers && r.activePlayers[r.turnIdx] === uid && r.players[uid].status === 'PLAYING') { document.getElementById('bj-controls').style.display = 'flex'; document.getElementById('btn-bj-hit').style.pointerEvents = 'auto'; document.getElementById('btn-bj-hit').style.opacity = '1'; document.getElementById('btn-bj-stand').style.pointerEvents = 'auto'; document.getElementById('btn-bj-stand').style.opacity = '1'; window.isBjAction = false; } else { document.getElementById('bj-controls').style.display = 'none'; }
+    let cM = document.getElementById('bj-center-msg'); if(r.status === 'ENDED') cM.innerHTML = (r.finalMsg||'') + '<br><span style="font-size:16px; color:#ffcc00; display:inline-block; margin-top:15px; border:1px dashed #ffcc00; padding:10px;">⏳ Ván mới bắt đầu sau 10s... (Khán giả sẽ được tham gia)</span>'; else if(r.status === 'PLAYING' && r.activePlayers && r.turnIdx >= r.activePlayers.length) cM.innerHTML = '<span class="text-gold">NHÀ CÁI ĐANG RÚT BÀI...</span>'; else cM.innerHTML = '';
+    if(r.status === 'PLAYING' && r.creator === uid && r.activePlayers && r.turnIdx >= r.activePlayers.length) { if(!window.isDealingBJ) { window.isDealingBJ = true; window.runDealerAI(rId, r); } }
 }
+window.bjCreateRoom = async () => { let b = parseInt(prompt("Nhập mức cược cố định PP cho phòng này:")); if(isNaN(b)||b<=0)return; const uS = await get(ref(db, `users/${uid}`)); if((Number(uS.val().pp)||0) < b) return alert("Không đủ tiền!"); const id = 'BJ_' + Date.now(); await set(ref(db, `blackjack_rooms/${id}`), { creator: uid, creatorName: uS.val().name, bet: b, status: 'WAITING', players: { [uid]: { name: uS.val().name, avatar: uS.val().avatar||'', status: 'WAITING' } }, activePlayers: [] }); };
+window.bjJoinRoom = async (id) => { const s = await get(ref(db, `blackjack_rooms/${id}`)); const r = s.val(); if(!r)return; if(r.players && Object.keys(r.players).length >= 5) return alert("Đã max 5 người!"); const uS = await get(ref(db, `users/${uid}`)); if((Number(uS.val().pp)||0) < r.bet) return alert("Bạn không đủ PP cược theo phòng này!"); let st = r.status === 'WAITING' ? 'WAITING' : 'SPECTATOR'; await update(ref(db, `blackjack_rooms/${id}/players/${uid}`), { name: uS.val().name, avatar: uS.val().avatar||'', hand: [], status: st }); document.getElementById('bj-modal').style.display='flex'; };
+window.bjLeaveRoom = async () => { if(!myBjRoomId) return window.closeBlackjackModal(); const s = await get(ref(db, `blackjack_rooms/${myBjRoomId}`)); const r = s.val(); if(!r) { myBjRoomId = null; window.closeBlackjackModal(); return; } if(r.status === 'PLAYING' && r.activePlayers && r.activePlayers.includes(uid)) return alert("Đang chơi ván này, không được thoát ngang!"); if(r.creator === uid || !r.players || Object.keys(r.players).length <= 1) { await remove(ref(db, `blackjack_rooms/${myBjRoomId}`)); } else { await remove(ref(db, `blackjack_rooms/${myBjRoomId}/players/${uid}`)); if(r.activePlayers) { const nA = r.activePlayers.filter(x => x !== uid); await update(ref(db, `blackjack_rooms/${myBjRoomId}`), { activePlayers: nA }); } } myBjRoomId = null; document.getElementById('bj-modal').style.display='none'; alert("Đã thoát khỏi sòng!"); };
+window.bjStartGame = async (rIdParam) => { const rid = rIdParam || myBjRoomId; if(!rid) return; const s = await get(ref(db, `blackjack_rooms/${rid}`)); const r = s.val(); if(!r || !r.players) return; let vO = []; let up = {}; for(let pU in r.players) { const uS = await get(ref(db, `users/${pU}`)); let pp = Number(uS.val().pp)||0; if(pp >= r.bet) { vO.push(pU); up[`/users/${pU}/pp`] = pp - r.bet; } else { up[`/blackjack_rooms/${rid}/players/${pU}`] = null; } } if(vO.length === 0) { await remove(ref(db, `blackjack_rooms/${rid}`)); return alert("Sòng giải tán vì tất cả hết tiền!"); } if(!vO.includes(r.creator)) { up[`/blackjack_rooms/${rid}/creator`] = vO[0]; up[`/blackjack_rooms/${rid}/creatorName`] = r.players[vO[0]].name; } let d = Array.from({length:52}, (_,i)=>i); for(let i=51;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];} up[`/blackjack_rooms/${rid}/dealer`] = { hand: [d.pop(), d.pop()], isHidden: true }; up[`/blackjack_rooms/${rid}/activePlayers`] = vO; for(let pU of vO) { let h = [d.pop(), d.pop()]; let i = getBjInfo(h); up[`/blackjack_rooms/${rid}/players/${pU}/hand`] = h; up[`/blackjack_rooms/${rid}/players/${pU}/status`] = (i.type==='XIBANG'||i.type==='XIDACH') ? 'BLACKJACK' : 'PLAYING'; } let fT = 0; while(fT < vO.length && up[`/blackjack_rooms/${rid}/players/${vO[fT]}/status`] === 'BLACKJACK') fT++; up[`/blackjack_rooms/${rid}/status`] = 'PLAYING'; up[`/blackjack_rooms/${rid}/deck`] = d; up[`/blackjack_rooms/${rid}/turnIdx`] = fT; await update(ref(db, '/'), up); };
+window.bjHit = async () => { if(window.isBjAction) return; window.isBjAction = true; document.getElementById('btn-bj-hit').style.pointerEvents = 'none'; document.getElementById('btn-bj-hit').style.opacity = '0.5'; document.getElementById('btn-bj-stand').style.pointerEvents = 'none'; document.getElementById('btn-bj-stand').style.opacity = '0.5'; const s = await get(ref(db, `blackjack_rooms/${myBjRoomId}`)); const r = s.val(); let ap = r.activePlayers; let pd = r.players[uid]; let dk = r.deck; pd.hand.push(dk.pop()); let inf = getBjInfo(pd.hand); let nI = r.turnIdx; let st = 'PLAYING'; if(inf.type === 'QUAC') { st = 'BUSTED'; nI++; } else if(inf.type === 'NGULINH' || pd.hand.length >= 5 || inf.score === 21) { st = 'STOOD'; nI++; } while(nI < ap.length && r.players[ap[nI]].status === 'BLACKJACK') nI++; await update(ref(db, `blackjack_rooms/${myBjRoomId}`), { [`players/${uid}/hand`]: pd.hand, [`players/${uid}/status`]: st, deck: dk, turnIdx: nI }); };
+window.bjStand = async () => { if(window.isBjAction) return; window.isBjAction = true; document.getElementById('btn-bj-hit').style.pointerEvents = 'none'; document.getElementById('btn-bj-stand').style.pointerEvents = 'none'; const s = await get(ref(db, `blackjack_rooms/${myBjRoomId}`)); const r = s.val(); let ap = r.activePlayers; let nI = r.turnIdx + 1; while(nI < ap.length && r.players[ap[nI]].status === 'BLACKJACK') nI++; await update(ref(db, `blackjack_rooms/${myBjRoomId}`), { [`players/${uid}/status`]: 'STOOD', turnIdx: nI }); };
+window.runDealerAI = async (rId, r) => { await new Promise(resolve => setTimeout(resolve, 1500)); let dk = r.deck || []; let dH = r.dealer.hand || []; await update(ref(db, `blackjack_rooms/${rId}/dealer`), { hand: dH, isHidden: false }); let dI = getBjInfo(dH); while(dI.score < 17 && dH.length < 5 && dI.type !== 'QUAC' && dI.type !== 'XIBANG' && dI.type !== 'XIDACH') { await new Promise(resolve => setTimeout(resolve, 1200)); dH.push(dk.pop()); dI = getBjInfo(dH); await update(ref(db, `blackjack_rooms/${rId}`), { 'dealer/hand': dH, deck: dk }); } await new Promise(resolve => setTimeout(resolve, 1500)); let up = {}; let fM = "KẾT QUẢ: " + (dI.type==='QUAC'?"NHÀ CÁI QUẮC BÙ":dI.type==='XIBANG'?"CÁI XÌ BÀNG":dI.type==='XIDACH'?"CÁI XÌ DÁCH":dI.type==='NGULINH'?"CÁI NGŨ LINH":dI.score+" ĐIỂM") + "<br><br>"; let ap = r.activePlayers || []; for (let pU of ap) { let pD = r.players[pU]; let pI = getBjInfo(pD.hand); let res = compareBj(pI, dI); const us = await get(ref(db, `users/${pU}`)); let pp = Number(us.val().pp) || 0; let b = r.bet; if(pI.type === 'QUAC') { fM += `<span class="text-red">${pD.name} QUẮC (-${b.toLocaleString()})</span><br>`; window.logGame(pU, pD.name, "Blackjack", b, -b, "Quắc"); } else if(pI.type === 'XIBANG' || pI.type === 'XIDACH') { up[`/users/${pU}/pp`] = pp + (b * 2.5); fM += `<span class="text-green">${pD.name} TỚI TRẮNG (+${(b*1.5).toLocaleString()})</span><br>`; window.logGame(pU, pD.name, "Blackjack", b, b*1.5, "Blackjack"); } else { if(res === 1) { let m = (pI.type==='NGULINH') ? 2.2 : (pI.type==='PERFECT_21'?2.1:2); up[`/users/${pU}/pp`] = pp + (b * m); fM += `<span class="text-green">${pD.name} THẮNG (+${(b*(m-1)).toLocaleString()})</span><br>`; window.logGame(pU, pD.name, "Blackjack", b, b*(m-1), "Thắng");} else if(res === 0) { up[`/users/${pU}/pp`] = pp + b; fM += `<span style="color:#ffcc00">${pD.name} HÒA (Hoàn cược)</span><br>`; window.logGame(pU, pD.name, "Blackjack", b, 0, "Hòa");} else { fM += `<span class="text-red">${pD.name} THUA (-${b.toLocaleString()})</span><br>`; window.logGame(pU, pD.name, "Blackjack", b, -b, "Thua");} } } up[`/blackjack_rooms/${rId}/status`] = 'ENDED'; up[`/blackjack_rooms/${rId}/finalMsg`] = fM; await update(ref(db, '/'), up); setTimeout(async () => { window.isDealingBJ = false; const cSnap = await get(ref(db, `blackjack_rooms/${rId}`)); const cR = cSnap.val(); if(!cR || !cR.players) return; let resetUp = { status: 'WAITING', finalMsg: '', dealer: null, deck: null, turnIdx: 0, activePlayers: [] }; for(let px in cR.players) { resetUp[`players/${px}/status`] = 'WAITING'; resetUp[`players/${px}/hand`] = []; } await update(ref(db, `blackjack_rooms/${rId}`), resetUp); }, 10000); };
 
-window.tlToggleCard = (index) => {
-    const el = document.getElementById(`my-card-${index}`);
-    if(selectedCardsIndices.includes(index)) { selectedCardsIndices = selectedCardsIndices.filter(i => i !== index); el.classList.remove('selected'); } 
-    else { selectedCardsIndices.push(index); el.classList.add('selected'); }
-};
-
-function renderTlBoard(r) {
-    const pOrder = r.playerOrder || []; const myIndex = pOrder.indexOf(uid); if(myIndex === -1) return;
-    ['top', 'left', 'right'].forEach(pos => document.getElementById(`tl-seat-${pos}`).innerHTML = '');
-    document.getElementById('tl-start-btn').style.display = (r.status === 'WAITING' && r.creator === uid) ? 'block' : 'none';
-    document.getElementById('tl-pot-display').innerText = `TỔNG CƯỢC: ${r.pot.toLocaleString()} PP`;
-    
-    const isMyTurn = (r.status === 'PLAYING' && r.turn === uid);
-    document.getElementById('tl-controls').style.display = isMyTurn ? 'flex' : 'none';
-    document.getElementById('tl-timer-bar-container').style.display = (r.status === 'PLAYING') ? 'block' : 'none';
-
-    const positions = pOrder.length === 2 ? ['bottom', 'top'] : pOrder.length === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
-    pOrder.forEach((pUid, idx) => {
-        const relativeIdx = (idx - myIndex + pOrder.length) % pOrder.length; const pos = positions[relativeIdx];
-        const pInfo = r.players[pUid]; const isTurn = r.turn === pUid; const hasPassed = (r.passList || []).includes(pUid);
-        const cardCount = r.hands && r.hands[pUid] ? r.hands[pUid].length : 13;
-        
-        let html = `<div class="tl-player-badge ${isTurn ? 'active-turn' : ''} ${hasPassed ? 'passed' : ''}"><img src="${pInfo.avatar}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${isTurn ? 'var(--neon-gold)' : '#fff'};"><div><span class="text-blue" style="font-size:14px; font-weight:bold;">${pInfo.name}</span><br><small style="color:#ffcc00; font-size:12px;">${cardCount} lá</small></div></div>`;
-        
-        if (pos !== 'bottom' && r.status === 'PLAYING') {
-            html += `<div style="margin-top:15px; display:flex; justify-content:center;">${Array(cardCount).fill('<div class="tl-card-back"></div>').join('')}</div>`;
-            document.getElementById(`tl-seat-${pos}`).innerHTML = html;
-        } else if (pos === 'bottom') {
-            document.getElementById('tl-my-info').innerHTML = html;
-            if(r.status === 'PLAYING' && r.hands && r.hands[uid]) {
-                const myHand = r.hands[uid]; const sig = myHand.join(',');
-                if(windowLastHandSig !== sig) {
-                    selectedCardsIndices = []; document.getElementById('tl-my-hand').innerHTML = myHand.map((val, i) => getCardHTML(val, false, i)).join(''); windowLastHandSig = sig;
-                }
-            } else { document.getElementById('tl-my-hand').innerHTML = ''; windowLastHandSig = ""; }
-        }
-    });
-
-    if(r.status === 'PLAYING') {
-        const centerPileHTML = (r.currentPile || []).map(val => getCardHTML(val, true)).join('');
-        const pileContainer = document.getElementById('tl-center-pile');
-        if(pileContainer.innerHTML !== centerPileHTML) pileContainer.innerHTML = centerPileHTML;
-        
-        if(isMyTurn) {
-            const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
-            document.getElementById('tl-turn-msg').innerHTML = `<span style="color:var(--neon-green)">TỚI LƯỢT ĐÁNH BÀI!</span> ${mustPlay ? '<br><span style="font-size:12px; color:#ffcc00">(Đang cầm cái - Phải đánh!)</span>' : ''}`;
-        } else { document.getElementById('tl-turn-msg').innerText = `Đang đợi ${r.players[r.turn].name}...`; }
-    }
-
-    if(r.status === 'ENDED') {
-        document.getElementById('tl-turn-msg').innerHTML = `<h1 class="text-gold glow-pulse" style="font-size:40px; margin:0;">🎉 ${r.players[r.winner].name} TỚI TRƯỚC! 🎉</h1><p style="margin:5px 0;">Húp trọn ${r.pot.toLocaleString()} PP</p>`;
-        document.getElementById('tl-controls').style.display = 'none'; document.getElementById('tl-timer-bar-container').style.display = 'none';
-        if(r.winner === uid && !window.hasClaimedTl) {
-            window.hasClaimedTl = true;
-            setTimeout(async () => {
-                const uS = await get(ref(db, `users/${uid}`)); await update(ref(db, `users/${uid}`), { pp: (Number(uS.val().pp)||0) + r.pot });
-                window.showResult("BẠN ĐÃ TỚI!", `Bài quá đẹp! Quét sạch sòng ẵm ${r.pot.toLocaleString()} PP!`, true);
-                await remove(ref(db, `tienlen_rooms/${myTlRoomId}`)); window.hasClaimedTl = false; windowLastHandSig = "";
-            }, 3000);
-        }
-    }
-}
-
-function manageTlTimer(r) {
-    if(r.status !== 'PLAYING') { if(tlTimerInterval) clearInterval(tlTimerInterval); return; }
-    if(tlCurrentTurnStartTime !== r.turnStartTime) {
-        tlCurrentTurnStartTime = r.turnStartTime;
-        if(tlTimerInterval) clearInterval(tlTimerInterval);
-        
-        tlTimerInterval = setInterval(() => {
-            const elapsed = (Date.now() - r.turnStartTime) / 1000;
-            const timeLeft = Math.max(0, 30 - elapsed);
-            const pct = (timeLeft / 30) * 100;
-            const bar = document.getElementById('tl-timer-bar');
-            bar.style.width = `${pct}%`; bar.style.background = pct > 50 ? 'var(--neon-green)' : (pct > 20 ? 'var(--neon-gold)' : 'var(--neon-red)');
+// ✌️ KÉO BÚA BAO MULTIPLAYER
+let myRpsRoomId = null;
+window.closeRpsRoomModal = () => { document.getElementById('rps-modal').style.display='none'; };
+function getRpsEmoji(c) { if(c==='KEO') return '✌️'; if(c==='BUA') return '✊'; if(c==='BAO') return '✋'; return '❓'; }
+function checkRpsWin(p1, p2) { if(p1===p2) return 0; if((p1==='KEO'&&p2==='BAO')||(p1==='BUA'&&p2==='KEO')||(p1==='BAO'&&p2==='BUA')) return 1; return -1; }
+function listenRpsRooms() {
+    onValue(ref(db, 'rps_rooms'), async snap => {
+        const rooms = snap.val() || {}; let h = ""; let amI = false;
+        for(let k in rooms) {
+            const r = rooms[k]; const isMe = r.p1 === uid || r.p2 === uid;
+            if(isMe) { amI = true; myRpsRoomId = k; renderRpsBoard(r, k); document.getElementById('rps-modal').style.display='flex'; }
+            if(r.status === 'WAITING' && !isMe) h += `<div class="room-item" style="padding:10px; flex-direction:column; align-items:flex-start;"><div style="margin-bottom:8px;"><strong class="text-green">KÈO: ${r.p1Name}</strong><br><small>Cược: ${r.bet.toLocaleString()} PP</small></div><button onclick="rpsJoinRoom('${k}')" class="btn-cyber w-100" style="padding:8px;">[ VÀO ĐẤU ]</button></div>`;
             
-            if(timeLeft <= 0 && r.turn === uid) {
-                clearInterval(tlTimerInterval);
-                const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
-                if(mustPlay && r.hands[uid] && r.hands[uid].length > 0) { selectedCardsIndices = [0]; window.tlPlayCards(true); } 
-                else { window.tlPassTurn(true); }
+            if (isMe && r.status === 'ENDED' && r.p1Rematch && r.p2Rematch) {
+                if (uid === r.p1 && !window.rpsDealingRematch) {
+                    window.rpsDealingRematch = true; const u1 = await get(ref(db, `users/${r.p1}`)); const u2 = await get(ref(db, `users/${r.p2}`));
+                    if((Number(u1.val().pp)||0) < r.bet || (Number(u2.val().pp)||0) < r.bet) { await remove(ref(db, `rps_rooms/${k}`)); alert("Có người hết tiền, giải tán phòng!"); window.rpsDealingRematch = false; } else { await update(ref(db, `users/${r.p1}`), {pp: (Number(u1.val().pp)||0) - r.bet}); await update(ref(db, `users/${r.p2}`), {pp: (Number(u2.val().pp)||0) - r.bet}); await update(ref(db, `rps_rooms/${k}`), { status: 'PLAYING', p1Choice: '', p2Choice: '', finalMsg: '', p1Rematch: false, p2Rematch: false }); window.rpsDealingRematch = false; }
+                }
             }
-        }, 1000);
+        }
+        if(document.getElementById('rps-room-list')) document.getElementById('rps-room-list').innerHTML = h || '<p style="text-align:center; color:#888; font-size:12px;">Chưa có kèo đấu.</p>';
+        if(!amI) myRpsRoomId = null;
+    });
+}
+function renderRpsBoard(r, rId) { document.getElementById('rps-pot-display').innerText = `TỔNG CƯỢC: ${(r.bet*2).toLocaleString()} PP`; document.getElementById('rps-start-btn').style.display = (r.status==='WAITING' && r.p1===uid && r.p2) ? 'block' : 'none'; let p1H = `<img src="${r.p1Avatar}" style="width:60px; border-radius:50%; border:2px solid var(--neon-green);"><br><b class="text-green">${r.p1Name}</b><br>`; let p2H = r.p2 ? `<img src="${r.p2Avatar}" style="width:60px; border-radius:50%; border:2px solid var(--neon-red);"><br><b class="text-red">${r.p2Name}</b><br>` : `<div style="width:60px; height:60px; border-radius:50%; border:2px dashed #888; display:inline-block; line-height:60px; color:#888;">?</div><br><b style="color:#888">Đang chờ...</b>`; if(r.status === 'PLAYING' || r.status === 'ENDED') { p1H += `<div class="rps-hand ${r.status==='ENDED'?'drop':''}">${r.status==='ENDED' ? getRpsEmoji(r.p1Choice) : (r.p1Choice ? '✔️' : '🤔')}</div>`; p2H += `<div class="rps-hand ${r.status==='ENDED'?'drop':''}">${r.status==='ENDED' ? getRpsEmoji(r.p2Choice) : (r.p2Choice ? '✔️' : '🤔')}</div>`; } document.getElementById('rps-p1-area').innerHTML = p1H; document.getElementById('rps-p2-area').innerHTML = p2H; let amP1 = (uid === r.p1); let amP2 = (uid === r.p2); let hasChosen = (amP1 && r.p1Choice) || (amP2 && r.p2Choice); document.getElementById('rps-controls').style.display = (r.status === 'PLAYING' && !hasChosen) ? 'flex' : 'none'; let hasRematched = (amP1 && r.p1Rematch) || (amP2 && r.p2Rematch); document.getElementById('rps-rematch-controls').style.display = (r.status === 'ENDED' && !hasRematched) ? 'flex' : 'none'; let cM = document.getElementById('rps-center-msg'); if(r.status === 'WAITING') cM.innerText = r.p2 ? "SẴN SÀNG!" : "ĐANG CHỜ ĐỐI THỦ..."; else if(r.status === 'PLAYING') cM.innerText = "CHỌN ĐI!"; else if(r.status === 'ENDED') { let txt = r.finalMsg; if(r.p1Rematch || r.p2Rematch) txt += `<br><span style="font-size:14px; color:#aaa;">Đang chờ người kia đồng ý chơi tiếp...</span>`; cM.innerHTML = txt; } }
+window.rpsCreateRoom = async () => { let b = parseInt(prompt("Nhập PP cược 1vs1:")); if(isNaN(b)||b<=0)return; const uS = await get(ref(db, `users/${uid}`)); if((Number(uS.val().pp)||0) < b) return alert("Không đủ tiền!"); const id = 'RPS_' + Date.now(); await set(ref(db, `rps_rooms/${id}`), { p1: uid, p1Name: uS.val().name, p1Avatar: uS.val().avatar||'', bet: b, status: 'WAITING', p1Rematch: false, p2Rematch: false }); };
+window.rpsJoinRoom = async (id) => { const s = await get(ref(db, `rps_rooms/${id}`)); const r = s.val(); if(!r||r.p2)return; const uS = await get(ref(db, `users/${uid}`)); if((Number(uS.val().pp)||0) < r.bet) return alert("Không đủ PP!"); await update(ref(db, `rps_rooms/${id}`), { p2: uid, p2Name: uS.val().name, p2Avatar: uS.val().avatar||'' }); document.getElementById('rps-modal').style.display='flex'; };
+window.rpsLeaveRoom = async () => { if(!myRpsRoomId) return window.closeRpsRoomModal(); const s = await get(ref(db, `rps_rooms/${myRpsRoomId}`)); const r = s.val(); if(!r) { myRpsRoomId = null; return window.closeRpsRoomModal(); } if(r.status === 'PLAYING') return alert("Đang đấu không được chạy!"); if(r.p1 === uid) { await remove(ref(db, `rps_rooms/${myRpsRoomId}`)); } else { await update(ref(db, `rps_rooms/${myRpsRoomId}`), { p2: null, p2Name: null, p2Avatar: null }); } myRpsRoomId = null; window.closeRpsRoomModal(); };
+window.rpsStartGame = async () => { if(!myRpsRoomId) return; const s = await get(ref(db, `rps_rooms/${myRpsRoomId}`)); const r = s.val(); const u1 = await get(ref(db, `users/${r.p1}`)); const u2 = await get(ref(db, `users/${r.p2}`)); if((Number(u1.val().pp)||0)<r.bet || (Number(u2.val().pp)||0)<r.bet) { await remove(ref(db, `rps_rooms/${myRpsRoomId}`)); return alert("Có người hết tiền, giải tán!"); } await update(ref(db, `users/${r.p1}`), {pp: (Number(u1.val().pp)||0)-r.bet}); await update(ref(db, `users/${r.p2}`), {pp: (Number(u2.val().pp)||0)-r.bet}); await update(ref(db, `rps_rooms/${myRpsRoomId}`), {status: 'PLAYING', p1Choice: '', p2Choice: '', finalMsg: '', p1Rematch: false, p2Rematch: false}); };
+window.rpsMakeChoice = async (c) => { const s = await get(ref(db, `rps_rooms/${myRpsRoomId}`)); const r = s.val(); let up = {}; if(uid === r.p1) up.p1Choice = c; else if(uid === r.p2) up.p2Choice = c; await update(ref(db, `rps_rooms/${myRpsRoomId}`), up); const nrS = await get(ref(db, `rps_rooms/${myRpsRoomId}`)); const nr = nrS.val(); if(nr.p1Choice && nr.p2Choice) { let res = checkRpsWin(nr.p1Choice, nr.p2Choice); let fM = ""; const u1 = await get(ref(db, `users/${nr.p1}`)); const u2 = await get(ref(db, `users/${nr.p2}`)); if(res === 1) { await update(ref(db, `users/${nr.p1}`), {pp: (Number(u1.val().pp)||0) + (nr.bet*2)}); fM = `<span class="text-green">${nr.p1Name} ĐÃ ĂN SẠCH CỦA ${nr.p2Name}<br>🔥 TRỪ ${nr.bet.toLocaleString()} PP! 🔥</span>`; window.logGame(nr.p1, nr.p1Name, "Kéo Búa Bao", nr.bet, nr.bet, "Thắng"); window.logGame(nr.p2, nr.p2Name, "Kéo Búa Bao", nr.bet, -nr.bet, "Thua"); } else if(res === -1) { await update(ref(db, `users/${nr.p2}`), {pp: (Number(u2.val().pp)||0) + (nr.bet*2)}); fM = `<span class="text-red">${nr.p2Name} ĐÃ ĂN SẠCH CỦA ${nr.p1Name}<br>🔥 TRỪ ${nr.bet.toLocaleString()} PP! 🔥</span>`; window.logGame(nr.p2, nr.p2Name, "Kéo Búa Bao", nr.bet, nr.bet, "Thắng"); window.logGame(nr.p1, nr.p1Name, "Kéo Búa Bao", nr.bet, -nr.bet, "Thua"); } else { await update(ref(db, `users/${nr.p1}`), {pp: (Number(u1.val().pp)||0) + nr.bet}); await update(ref(db, `users/${nr.p2}`), {pp: (Number(u2.val().pp)||0) + nr.bet}); fM = `<span style="color:#ffcc00">HÒA NHAU! TRẢ LẠI TIỀN CƯỢC.</span>`; } await update(ref(db, `rps_rooms/${myRpsRoomId}`), {status: 'ENDED', finalMsg: fM}); } };
+window.rpsRematch = async () => { if(!myRpsRoomId) return; if(uid === (await get(ref(db,`rps_rooms/${myRpsRoomId}/p1`))).val()) { await update(ref(db, `rps_rooms/${myRpsRoomId}`), {p1Rematch: true}); } else { await update(ref(db, `rps_rooms/${myRpsRoomId}`), {p2Rematch: true}); } };
+
+// 🐎 ĐUA NGỰA 3D
+let horseInterval; let isHorseRacing=false; let horseBetAmount=0; let horseChoice=0;
+window.openHorseGame=()=>{document.getElementById('horse-modal').style.display='flex';resetHorseUI();}; window.closeHorseGame=()=>{if(isHorseRacing)return alert("Ngựa đang chạy không được rời sân!");document.getElementById('horse-modal').style.display='none';};
+function resetHorseUI(){for(let i=1;i<=4;i++){document.getElementById('h'+i).style.left='0%';}document.getElementById('horse-commentary').innerText="Vui lòng chọn ngựa và đặt cược...";document.getElementById('horse-bet').disabled=false;document.getElementById('horse-bet').value='';document.getElementById('horse-actions').style.display='flex';}
+window.startHorseRace=async(choice)=>{if(isHorseRacing)return;const b=parseInt(document.getElementById('horse-bet').value);if(isNaN(b)||b<=0)return window.showResult("LỖI","Cược không hợp lệ!",false);const s=await get(ref(db,`users/${uid}`));const cPP=Number(s.val().pp)||0;if(cPP<b)return window.showResult("NGHÈO","Không đủ PP!",false);await update(ref(db,`users/${uid}`),{pp:cPP-b});horseBetAmount=b;horseChoice=choice;isHorseRacing=true;document.getElementById('horse-bet').disabled=true;document.getElementById('horse-actions').style.display='none';let pos=[0,0,0,0];document.getElementById('horse-commentary').innerHTML=`Đang cược <b class="text-gold">Ngựa số ${choice}</b>... Cố lên!`;horseInterval=setInterval(()=>{let isFinished=false;let winner=0;for(let i=0;i<4;i++){pos[i]+=(Math.random()*0.8+0.1);document.getElementById('h'+(i+1)).style.left=pos[i]+'%';if(pos[i]>=85){isFinished=true;winner=i+1;}}if(isFinished){clearInterval(horseInterval);isHorseRacing=false;document.getElementById('horse-commentary').innerText=`NGỰA SỐ ${winner} VỀ ĐÍCH!`;setTimeout(async()=>{if(horseChoice===winner){const w=horseBetAmount*3;const ns=await get(ref(db,`users/${uid}`));await update(ref(db,`users/${uid}`),{pp:(Number(ns.val().pp)||0)+w});window.logGame(uid,localStorage.getItem('uname'),"Đua Ngựa",horseBetAmount,w-horseBetAmount,"Thắng");window.showResult("THẮNG CƯỢC",`Ngựa ${winner} về nhất!\nBạn ăn ${(w).toLocaleString()} PP (x3)!`,true);}else{window.logGame(uid,localStorage.getItem('uname'),"Đua Ngựa",horseBetAmount,-horseBetAmount,"Thua");window.showResult("THUA CƯỢC",`Ngựa ${winner} về nhất.\nBạn mất ${horseBetAmount.toLocaleString()} PP!`,false);}resetHorseUI();},1500);}},50);};
+
+// 🧸 MÁY GẮP GẤU BÔNG
+window.clawInterval = null; window.isClawActive = false; window.isClawDropping = false;
+window.prizesData = [ { id: 'prize-1', type: '🦄', mult: 10, x: 10, dir: 1, speed: 4.5 }, { id: 'prize-2', type: '🧸', mult: 3, x: 30, dir: -1, speed: 3.5 }, { id: 'prize-3', type: '🐼', mult: 3, x: 50, dir: 1, speed: 3.8 }, { id: 'prize-4', type: '🐧', mult: 2, x: 70, dir: -1, speed: 4.2 }, { id: 'prize-5', type: '🦊', mult: 2, x: 90, dir: 1, speed: 2.8 } ];
+
+window.openClawGame=()=>{
+    document.getElementById('claw-modal').style.display='flex'; document.getElementById('claw-crane').style.top='-10px'; document.getElementById('claw-crane').innerText='🎣'; document.getElementById('claw-grabbed').style.display='none'; document.getElementById('claw-msg').innerText="Kỳ Lân(x10) | Gấu/Trúc(x3) | Cáo/Cụt(x2)";
+    window.isClawActive = false; window.isClawDropping = false; document.getElementById('claw-bet-container').style.display = 'flex';
+    const btn = document.getElementById('claw-btn'); btn.innerText = "[ CHƠI GẮP THÚ ]"; btn.style.borderColor = "#ff69b4"; btn.style.color = "#ff69b4"; btn.style.pointerEvents = 'auto'; btn.style.opacity = '1';
+    if(!window.clawInterval) { window.clawInterval = setInterval(() => { if (window.isClawDropping) return; window.prizesData.forEach(p => { p.x += p.dir * p.speed; if (p.x >= 90) { p.x = 90; p.dir = -1; } if (p.x <= 0) { p.x = 0; p.dir = 1; } document.getElementById(p.id).style.left = p.x + '%'; document.getElementById(p.id).style.display = 'inline-block'; }); }, 50); }
+};
+window.closeClawGame=()=>{ if(window.isClawDropping) return alert("Đang gắp không được tắt máy!"); clearInterval(window.clawInterval); window.clawInterval = null; document.getElementById('claw-modal').style.display='none'; };
+window.startClawMachine = async () => {
+    if(window.isClawDropping) return;
+    const btn = document.getElementById('claw-btn'); const b = parseInt(document.getElementById('claw-bet').value); if(isNaN(b)||b<=0) return window.showResult("LỖI","Cược không hợp lệ!",false);
+    if(!window.isClawActive) {
+        const s = await get(ref(db,`users/${uid}`)); const cPP = Number(s.val().pp)||0; if(cPP < b) return window.showResult("NGHÈO","Không đủ PP!",false);
+        await update(ref(db,`users/${uid}`),{pp: cPP - b});
+        window.isClawActive = true; document.getElementById('claw-bet-container').style.display = 'none'; btn.innerText = "[ GẮP XUỐNG NGAY! ]"; btn.style.borderColor = "var(--neon-green)"; btn.style.color = "var(--neon-green)"; document.getElementById('claw-msg').innerText = "Canh chuẩn và bấm nút để gắp!";
+    } else {
+        window.isClawDropping = true; const crane = document.getElementById('claw-crane'); const grabbed = document.getElementById('claw-grabbed');
+        document.getElementById('claw-msg').innerText = "Đang thả ngàm..."; crane.style.transition = 'top 0.8s ease-in'; crane.style.top = '220px'; btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none';
+        setTimeout(() => {
+            let hitPrize = null; let minDiff = 999; 
+            window.prizesData.forEach(p => { let diff = Math.abs(p.x - 50); if (diff < 4 && diff < minDiff) { minDiff = diff; hitPrize = p; } });
+            
+            if (hitPrize) { crane.innerText = '🤏'; grabbed.innerText = hitPrize.type; grabbed.style.display = 'block'; document.getElementById(hitPrize.id).style.display = 'none'; document.getElementById('claw-msg').innerText = "Tuyệt vời! Đang kéo lên..."; } 
+            else { crane.innerText = '🎣'; document.getElementById('claw-msg').innerText = "Hụt mất rồi! Đang thu ngàm..."; }
+            crane.style.transition = 'top 0.8s ease-out'; grabbed.style.transition = 'top 0.8s ease-out'; crane.style.top = '-10px'; grabbed.style.top = '40px';
+            setTimeout(async () => {
+                if (hitPrize) {
+                    let pWin = b * hitPrize.mult; const ns = await get(ref(db,`users/${uid}`)); await update(ref(db,`users/${uid}`),{pp: (Number(ns.val().pp)||0) + pWin});
+                    window.logGame(uid,localStorage.getItem('uname'),"Gắp Thú",b,pWin-b,"Thắng"); window.showResult("GẮP TRÚNG", `Bắt được ${hitPrize.type}!\nĂn ${(pWin).toLocaleString()} PP (x${hitPrize.mult})!`, true); document.getElementById(hitPrize.id).style.display = 'inline-block'; 
+                } else { window.logGame(uid,localStorage.getItem('uname'),"Gắp Thú",b,-b,"Thua"); window.showResult("GẮP HỤT", `Gắp nhầm không khí!\nMất ${b.toLocaleString()} PP!`, false); }
+                window.isClawActive = false; window.isClawDropping = false; grabbed.style.display = 'none'; grabbed.style.top = '250px'; grabbed.style.transition = 'none'; crane.innerText = '🎣'; document.getElementById('claw-bet-container').style.display = 'flex'; btn.innerText = "[ CHƠI GẮP THÚ ]"; btn.style.borderColor = "#ff69b4"; btn.style.color = "#ff69b4"; btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; document.getElementById('claw-msg').innerText = "Kỳ Lân(x10) | Gấu/Trúc(x3) | Cáo/Cụt(x2)";
+            }, 800);
+        }, 800);
     }
+};
+
+// ⚽ ĐÁ BÓNG FC MOBILE MỚI (FIX TẤN CÔNG + CAO TRÀO + BÙ GIỜ + TEAM STRENGTH)
+window.fcmInterval = null; window.isFcmActive = false; window.fcmBet = 0; window.fcmChoice = ''; 
+window.fcmScore = { blue: 0, red: 0 }; window.fcmTime = 0; window.fcmTotalTime = 90; window.fcmStrength = { blue: 1.0, red: 1.0 };
+const fcmCmtNormal = [ "Tranh chấp ở giữa sân.", "Chuyền bóng qua lại.", "Đội hình đang lùi sâu thăm dò.", "Một pha phạm lỗi nhẹ." ];
+const fcmCmtAttack = [ "🔥 Đang dốc bóng bên cánh...", "💥 PHẢN CÔNG NHANH!", "Sút xa!!! Không vào.", "🧱 CẢN PHÁ XUẤT THẦN từ thủ môn." ];
+
+window.openFcMobileGame = () => {
+    document.getElementById('fcmobile-modal').style.display = 'flex';
+    document.getElementById('fcm-score-blue').innerText = '0'; document.getElementById('fcm-score-red').innerText = '0';
+    document.getElementById('fcm-odds-blue').innerText = 'Sức mạnh: --'; document.getElementById('fcm-odds-red').innerText = 'Sức mạnh: --';
+    document.getElementById('fcm-timer').innerText = "00:00";
+    document.getElementById('fcm-bet').disabled = false; document.getElementById('fcm-bet').value = '';
+    document.getElementById('btn-fcm-blue').style.display = 'block'; document.getElementById('btn-fcm-red').style.display = 'block';
+    document.getElementById('fcm-commentary').innerText = "Vui lòng chọn đội để cược và bắt đầu trận đấu...";
+    window.isFcmActive = false;
+    document.getElementById('fcm-pitch').classList.remove('shake-screen');
+    renderFcmPlayers();
+};
+window.closeFcMobileGame = () => { if(window.isFcmActive) return alert("Trận đấu đang diễn ra, không thể rời sân!"); document.getElementById('fcmobile-modal').style.display = 'none'; };
+
+function renderFcmPlayers() {
+    let html = '';
+    for(let i=0; i<7; i++) {
+        html += `<div id="fcm-b-${i}" class="fcm-player fcm-blue" style="left:${20+Math.random()*20}%; top:${10+Math.random()*80}%;"></div>`;
+        html += `<div id="fcm-r-${i}" class="fcm-player fcm-red" style="left:${60+Math.random()*20}%; top:${10+Math.random()*80}%;"></div>`;
+    }
+    document.getElementById('fcm-players-container').innerHTML = html;
+    document.getElementById('fcm-ball').style.left = '50%'; document.getElementById('fcm-ball').style.top = '50%';
 }
 
-window.tlPlayCards = async (isAuto = false) => {
-    if(selectedCardsIndices.length === 0) return alert("Chọn bài đi chứ!");
-    const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
-    let myHand = r.hands[uid]; let cardsToPlay = selectedCardsIndices.map(i => myHand[i]).sort((a,b) => a - b);
+window.startFcMobileMatch = async (choice) => {
+    if(window.isFcmActive) return;
+    const b = parseInt(document.getElementById('fcm-bet').value); if(isNaN(b)||b<=0) return window.showResult("LỖI","Cược không hợp lệ!",false);
+    const s = await get(ref(db,`users/${uid}`)); const cPP = Number(s.val().pp)||0; if(cPP < b) return window.showResult("NGHÈO","Không đủ PP!",false);
+    await update(ref(db,`users/${uid}`),{pp: cPP - b});
     
-    const playObj = analyzeCards(cardsToPlay);
-    if(!playObj) { if(!isAuto) alert("Bài không hợp lệ (Không đúng sảnh/đôi/tứ quý)! Cấm đánh láo!"); return; }
+    window.fcmBet = b; window.fcmChoice = choice; window.isFcmActive = true; window.fcmScore = { blue: 0, red: 0 }; window.fcmTime = 0;
     
-    const mustPlay = (!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid);
-    if(!mustPlay) { const pileObj = analyzeCards(r.currentPile); if(!canBeat(playObj, pileObj)) { if(!isAuto) alert("Bài này không chặt được bài trên bàn!"); return; } }
+    // Khởi tạo sức mạnh random (Đội mạnh 1.2x, Đội yếu 0.8x)
+    let bStr = Math.random() > 0.5 ? 1.2 : 0.8;
+    window.fcmStrength = { blue: bStr, red: 2.0 - bStr };
+    document.getElementById('fcm-odds-blue').innerHTML = `Sức mạnh: ${window.fcmStrength.blue===1.2?'<b class="text-gold">MẠNH (1.2x)</b>':'<b style="color:#aaa">YẾU (0.8x)</b>'}`;
+    document.getElementById('fcm-odds-red').innerHTML = `Sức mạnh: ${window.fcmStrength.red===1.2?'<b class="text-gold">MẠNH (1.2x)</b>':'<b style="color:#aaa">YẾU (0.8x)</b>'}`;
+    
+    // Tính thời gian bù giờ (từ 1 đến 5 giây)
+    let injury = Math.floor(Math.random() * 5) + 1;
+    window.fcmTotalTime = 90 + injury;
 
-    let newHand = myHand.filter((_, i) => !selectedCardsIndices.includes(i));
-    selectedCardsIndices = []; windowLastHandSig = ""; 
-    let nextIdx = (r.playerOrder.indexOf(uid) + 1) % r.playerOrder.length; let nextUid = r.playerOrder[nextIdx];
-    let safeLoop = 0; while((r.passList || []).includes(nextUid) && safeLoop < 4) { nextIdx = (nextIdx + 1) % r.playerOrder.length; nextUid = r.playerOrder[nextIdx]; safeLoop++; }
+    document.getElementById('fcm-bet').disabled = true; document.getElementById('btn-fcm-blue').style.display = 'none'; document.getElementById('btn-fcm-red').style.display = 'none';
+    document.getElementById('fcm-score-blue').innerText = '0'; document.getElementById('fcm-score-red').innerText = '0';
+    document.getElementById('fcm-commentary').innerText = `Trọng tài thổi còi! Trận đấu ${window.fcmTotalTime} phút bắt đầu!`;
+    document.getElementById('fcm-pitch').classList.remove('shake-screen');
 
-    let updates = { [`hands/${uid}`]: newHand, currentPile: cardsToPlay, lastPlayedBy: uid, turn: nextUid, turnStartTime: Date.now() };
-    if(newHand.length === 0) { updates.status = 'ENDED'; updates.winner = uid; }
-    await update(ref(db, `tienlen_rooms/${myTlRoomId}`), updates);
+    window.fcmInterval = setInterval(() => {
+        window.fcmTime++;
+        let m = window.fcmTime < 10 ? '0'+window.fcmTime : window.fcmTime;
+        document.getElementById('fcm-timer').innerText = window.fcmTime <= 90 ? `${m}:00` : `90+${window.fcmTime-90}`;
+        document.getElementById('fcm-pitch').classList.remove('shake-screen'); // Xóa rung màn hình của nhịp trước (nếu có)
+        
+        let phase = 'EXPLORE';
+        if (window.fcmTime > 30 && window.fcmTime <= 70) phase = 'ATTACK';
+        else if (window.fcmTime > 70) phase = 'CLIMAX';
+
+        // Quyết định ai đang cầm bóng / tấn công dựa trên sức mạnh
+        let attackingTeam = (Math.random() * window.fcmStrength.blue > Math.random() * window.fcmStrength.red) ? 'BLUE' : 'RED';
+        
+        // Di chuyển bóng có logic hơn
+        let ballX = 50; let ballY = 10 + Math.random() * 80;
+        if (phase === 'EXPLORE') { ballX = 30 + Math.random() * 40; } // Giữa sân
+        else {
+            // Ép sân
+            if (attackingTeam === 'BLUE') ballX = 60 + Math.random() * 35; // Gần gôn đỏ
+            else ballX = 5 + Math.random() * 35; // Gần gôn xanh
+        }
+
+        document.getElementById('fcm-ball').style.left = ballX + '%'; document.getElementById('fcm-ball').style.top = ballY + '%';
+
+        // Cầu thủ ùa theo bóng
+        for(let i=0; i<7; i++) {
+            document.getElementById(`fcm-b-${i}`).style.left = (ballX + (Math.random()*20 - 10)) + '%'; document.getElementById(`fcm-b-${i}`).style.top = (ballY + (Math.random()*30 - 15)) + '%';
+            document.getElementById(`fcm-r-${i}`).style.left = (ballX + (Math.random()*20 - 10)) + '%'; document.getElementById(`fcm-r-${i}`).style.top = (ballY + (Math.random()*30 - 15)) + '%';
+        }
+        
+        // Bình luận
+        if(window.fcmTime % 3 === 0) {
+            let cmtArr = phase === 'EXPLORE' ? fcmCmtNormal : fcmCmtAttack;
+            document.getElementById('fcm-commentary').innerText = `[Phút ${window.fcmTime}] ` + cmtArr[Math.floor(Math.random() * cmtArr.length)];
+        }
+
+        // Logic check bàn thắng (mỗi 2s ở hiệp tấn công/cao trào)
+        if (window.fcmTime % 2 === 0 && phase !== 'EXPLORE') {
+            let baseGoalChance = phase === 'CLIMAX' ? 0.12 : 0.05; // 12% ở cao trào, 5% bình thường
+            if (window.fcmTime === 89 || window.fcmTime === 90) baseGoalChance = 0.3; // Phút 89, 90 rất dễ nổ tài
+            
+            // Tỷ lệ thực tế phụ thuộc đội đang ép sân
+            let realChance = baseGoalChance * (attackingTeam === 'BLUE' ? window.fcmStrength.blue : window.fcmStrength.red);
+            
+            if (Math.random() < realChance) {
+                document.getElementById('fcm-pitch').classList.add('shake-screen');
+                if (attackingTeam === 'BLUE') {
+                    window.fcmScore.blue++; document.getElementById('fcm-score-blue').innerText = window.fcmScore.blue;
+                    document.getElementById('fcm-ball').style.left = '95%'; document.getElementById('fcm-ball').style.top = '50%'; 
+                    document.getElementById('fcm-commentary').innerHTML = `<span class="text-blue">⚽ GOAL BLUE!!! VÀOOOOO!!! Rất đẹp mắt.</span>`;
+                } else {
+                    window.fcmScore.red++; document.getElementById('fcm-score-red').innerText = window.fcmScore.red;
+                    document.getElementById('fcm-ball').style.left = '5%'; document.getElementById('fcm-ball').style.top = '50%'; 
+                    document.getElementById('fcm-commentary').innerHTML = `<span class="text-red">⚽ GOAL RED!!! Lưới đã rung lên!</span>`;
+                }
+            }
+        }
+        
+        // Kết thúc trận
+        if(window.fcmTime >= window.fcmTotalTime) {
+            clearInterval(window.fcmInterval); finishFcMobileMatch();
+        }
+    }, 1000); // 1s = 1 phút trong game
 };
 
-window.tlPassTurn = async (isAuto = false) => {
-    const rSnap = await get(ref(db, `tienlen_rooms/${myTlRoomId}`)); const r = rSnap.val();
-    if(!r.currentPile || r.currentPile.length === 0 || r.lastPlayedBy === uid) { if(!isAuto) alert("Đang cầm cái, bắt buộc phải ra bài!"); return; }
+async function finishFcMobileMatch() {
+    document.getElementById('fcm-commentary').innerText = "HẾT GIỜ! Trận đấu đã kết thúc.";
+    let sB = window.fcmScore.blue; let sR = window.fcmScore.red;
+    let winningTeam = sB > sR ? 'BLUE' : (sR > sB ? 'RED' : 'DRAW');
     
-    let passList = r.passList || []; passList.push(uid);
-    let nextIdx = (r.playerOrder.indexOf(uid) + 1) % r.playerOrder.length; let nextUid = r.playerOrder[nextIdx];
-    let safeLoop = 0; while(passList.includes(nextUid) && safeLoop < 4) { nextIdx = (nextIdx + 1) % r.playerOrder.length; nextUid = r.playerOrder[nextIdx]; safeLoop++; }
+    let payout = 0; let msg = `Tỉ số chung cuộc: Xanh ${sB} - ${sR} Đỏ.\n`; let isWin = false; let title = "";
+    
+    if (winningTeam === 'DRAW') {
+        payout = window.fcmBet; // Hoàn tiền
+        msg += "Kết quả HÒA. Trả lại tiền cược."; title = "HÒA NHAU"; isWin = true;
+    } else if (winningTeam === window.fcmChoice) {
+        let gap = Math.abs(sB - sR);
+        if (gap >= 2) {
+            payout = window.fcmBet * 2.5; // Thắng cách biệt ăn x2.5
+            msg += "Đội của bạn đã thắng CÁCH BIỆT! Nhận x2.5 tiền cược."; title = "THẮNG LỚN";
+        } else {
+            payout = window.fcmBet * 2; // Thắng thường ăn x2
+            msg += "Đội của bạn đã chiến thắng! Nhận x2 tiền cược."; title = "THẮNG CƯỢC";
+        }
+        isWin = true;
+    } else {
+        payout = 0; // Thua
+        msg += "Đội của bạn đã thua trận."; title = "THUA CƯỢC"; isWin = false;
+    }
+    
+    if (payout > 0) { const ns = await get(ref(db,`users/${uid}`)); await update(ref(db,`users/${uid}`),{pp: (Number(ns.val().pp)||0) + payout}); }
+    
+    window.logGame(uid, localStorage.getItem('uname'), "FC Mobile", window.fcmBet, payout - window.fcmBet, isWin && winningTeam !== 'DRAW' ? "Thắng" : (winningTeam === 'DRAW' ? "Hòa" : "Thua"));
+    
+    setTimeout(() => {
+        window.isFcmActive = false; window.openFcMobileGame(); window.showResult(title, msg, isWin);
+    }, 3000);
+}
 
-    let updates = { passList: passList, turn: nextUid, turnStartTime: Date.now() };
-    if(passList.length >= r.playerOrder.length - 1) { updates.passList = []; updates.currentPile = []; }
-    await update(ref(db, `tienlen_rooms/${myTlRoomId}`), updates);
-};
+// CÁC MINIGAMES NHỎ
+async function executeBet(gameName, logicCallback) { let bet = prompt(`[ ${gameName} ]\nNhập PP cược:`); if(!bet) return; bet = parseInt(bet); if(isNaN(bet) || bet <= 0) return window.showResult("LỖI", "Cược không hợp lệ!", false); const snap = await get(ref(db, `users/${uid}`)); const u = snap.val(); const currentPP = Number(u.pp) || 0; if(currentPP < bet) return window.showResult("NGHÈO", `Không đủ cược!`, false); const res = await logicCallback(bet, currentPP); if(res === null) return; const { payout, message, title, isWin } = res; const modal = document.getElementById('result-modal'); const t = document.getElementById('result-title'); const msg = document.getElementById('result-msg'); const icon = document.getElementById('result-icon'); const btn = document.getElementById('result-close-btn'); t.innerText = "ĐANG XỬ LÝ..."; t.className = "text-blue glow-pulse"; msg.innerHTML = ""; icon.className = "fas fa-spinner fa-spin fa-3x text-blue"; btn.style.display = 'none'; modal.style.display = 'flex'; setTimeout(async () => { const freshSnap = await get(ref(db, `users/${uid}`)); const freshPP = Number(freshSnap.val().pp) || 0; await update(ref(db, `users/${uid}`), { pp: freshPP + payout }); window.logGame(uid, u.name, gameName, bet, payout, isWin?"Thắng":"Thua"); t.innerText = title; t.className = isWin ? 'text-gold glow-pulse' : 'text-red glow-pulse'; msg.innerHTML = `${message}<br><br>=> TÀI SẢN: ${(freshPP + payout).toLocaleString()}`; icon.className = isWin ? "fas fa-trophy fa-3x text-gold" : "fas fa-skull fa-3x text-red"; btn.style.display = 'block'; }, 1500); }
+window.playTarot=()=>executeBet("BÓI TAROT",b=>{let c=prompt("Có 3 bài úp (1,2,3). Chọn lá:");if(!['1','2','3'].includes(c))return null;const cd=[{n:"SUN☀️",m:5},{n:"LOVERS💕",m:2},{n:"TOWER🌩️",m:0},{n:"DEATH💀",m:0},{n:"WHEEL🎡",m:1.5}];const dr=cd[Math.floor(Math.random()*cd.length)];const p=Math.floor(b*dr.m)-b;if(p>=0)return{payout:p,message:`Lá ${dr.n}\nNhận ${(p+b).toLocaleString()}`,title:"THẮNG",isWin:true};return{payout:p,message:`Lá ${dr.n}\nMất ${b.toLocaleString()}`,title:"THUA",isWin:false};});
+window.playSquidGame=()=>executeBet("CẦU KÍNH SQUID",b=>{let s=1;while(s<=5){let c=prompt(`BƯỚC ${s}/5: Chọn T (Trái) hay P (Phải)?`);if(!c)return{payout:-b,message:`Bỏ cuộc mất ${b.toLocaleString()}`,title:"CHẾT",isWin:false};if(Math.random()<0.40){alert(`Bước ${s} AN TOÀN!`);s++;}else return{payout:-b,message:`RƠI VỰC BƯỚC ${s}! Mất ${b.toLocaleString()}`,title:"RƠI VỰC",isWin:false};}return{payout:b*20,message:`QUA CẦU! Ăn ${(b*20).toLocaleString()}`,title:"SỐNG SÓT",isWin:true};});
+window.playMinesweeper=()=>executeBet("MÁY DÒ MÌN",b=>{let g=prompt(`Nhập 3 ô (1-10) AN TOÀN. VD: 2, 5, 9`);if(!g)return null;let pc=g.split(',').map(s=>parseInt(s.trim()));if(pc.length!==3)return null;let ms=[];while(ms.length<4){let m=Math.floor(Math.random()*10)+1;if(!ms.includes(m))ms.push(m);}let hm=pc.filter(c=>ms.includes(c));if(hm.length>0)return{payout:-b,message:`Mìn ở [${ms.join(',')}]\nĐạp mìn ô ${hm[0]}! Mất ${b.toLocaleString()}`,title:"BÙM",isWin:false};return{payout:b*5,message:`Mìn ở [${ms.join(',')}]\nAn toàn! Ăn ${(b*5).toLocaleString()}`,title:"SỐNG",isWin:true};});
+window.playAuction=()=>executeBet("ĐẤU GIÁ",b=>{const rv=Math.floor(Math.random()*99000)+1000;const bt=Math.floor(rv*(Math.random()*0.9+0.4));let bi=parseInt(prompt(`Giá mua (Rương 1k-100k):`));if(isNaN(bi))return null;if(bi<bt)return{payout:0,message:`Giá rẻ, ko bán! (Chứa ${rv.toLocaleString()})`,title:"HỦY",isWin:true};const np=rv-bi;if(np>=0)return{payout:np,message:`Mở: ${rv.toLocaleString()} PP! LỜI ${np.toLocaleString()}`,title:"THẮNG",isWin:true};return{payout:np,message:`Mở: ${rv.toLocaleString()} PP! LỖ ${(np*-1).toLocaleString()}`,title:"BỊ HỚ",isWin:false};});
+window.playCockfight=(c)=>executeBet("ĐÁ GÀ",b=>{const w=Math.random()>0.6?(c==='RED'?'BLUE':'RED'):c;return c===w?{payout:b,message:`Gà thắng! Ăn ${b.toLocaleString()}`,title:"THẮNG",isWin:true}:{payout:-b,message:`Gà gãy giò!`,title:"THUA",isWin:false};});
+window.playThreeCards=()=>executeBet("BÀI CÀO",b=>{const p=(Math.floor(Math.random()*10)*3)%10,d=(Math.floor(Math.random()*10)*3)%10;if(p>d&&Math.random()>0.1)return{payout:b,message:`Bạn ${p} - Cái ${d}. Thắng!`,title:"THẮNG",isWin:true};if(p===d)return{payout:-Math.floor(b*0.2),message:`Hòa. Thu 20% phế.`,title:"HÒA",isWin:false};return{payout:-b,message:`Bạn ${p} - Cái ${d}. Thua!`,title:"THUA",isWin:false};});
+window.playCupid=()=>executeBet("MŨI TÊN T/Y",b=>{const m=(Math.random()*3).toFixed(1),df=Math.floor(b*m)-b;if(df>0)return{payout:df,message:`x${m}! Lời ${df.toLocaleString()}`,title:"THẮNG",isWin:true};return{payout:df,message:`x${m}! Lỗ ${(df*-1).toLocaleString()}`,title:df===0?"HÒA":"THUA",isWin:false};});
+window.playShield=()=>executeBet("ĐỠ ĐẠN",b=>{if(Math.random()<0.4)return{payout:Math.floor(b*0.3),message:`Lời ${(Math.floor(b*0.3)).toLocaleString()}`,title:"SỐNG",isWin:true};return{payout:-b,message:`Vỡ khiên!`,title:"CHẾT",isWin:false};});
+window.playPirate=(c)=>executeBet("KHO BÁU",b=>{const w=Math.floor(Math.random()*4)+1;return c===w?{payout:b*2,message:`Trúng vàng! Ăn ${(b*2).toLocaleString()}`,title:"THẮNG",isWin:true}:{payout:-b,message:`Bị cướp!`,title:"THUA",isWin:false};});
+
+// KHỞI ĐỘNG HỆ THỐNG
+if (uid) { document.getElementById('login-screen').style.display='none'; document.getElementById('dashboard').style.display='flex'; if(document.getElementById('add-class-select')) { document.getElementById('add-class-select').innerHTML=genClassOptions('Y1_A'); document.getElementById('filter-class-select').innerHTML=genClassOptions('ALL',true); } loadSystem(); }
