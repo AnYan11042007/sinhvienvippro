@@ -1,6 +1,0 @@
-{
-  "name": "School Main 88",
-  "description": "Secure, high-performance, and gamified student portal with real-time charts and activities.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
