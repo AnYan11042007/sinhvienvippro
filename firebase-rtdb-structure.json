@@ -1,0 +1,196 @@
+{
+  "settings": {
+    "battlepass": {
+      "price": 5000,
+      "reset_time": "2026-08-31T23:59:59",
+      "tiers": [
+        {
+          "id": "tier_1",
+          "name": "CẤP ĐỘ 1 - TÂN BINH",
+          "levelRequired": 1,
+          "standardReward": {
+            "label": "+200 PP",
+            "value": 200
+          },
+          "premiumReward": {
+            "label": "👑 +1,500 PP",
+            "value": 1500
+          }
+        },
+        {
+          "id": "tier_2",
+          "name": "CẤP ĐỘ 2 - CHUYÊN CẦN",
+          "levelRequired": 2,
+          "standardReward": {
+            "label": "🖼️ Khung Vàng Lấp Lánh",
+            "value": 300,
+            "frame": "gold-ring"
+          },
+          "premiumReward": {
+            "label": "👑 +3,000 PP",
+            "value": 3000
+          }
+        },
+        {
+          "id": "tier_3",
+          "name": "CẤP ĐỘ 3 - TRI THỨC",
+          "levelRequired": 3,
+          "standardReward": {
+            "label": "+500 PP",
+            "value": 500
+          },
+          "premiumReward": {
+            "label": "👑 🖼️ Khung Neon Đỏ Rực",
+            "value": 5000,
+            "frame": "neon-ring"
+          }
+        },
+        {
+          "id": "tier_4",
+          "name": "CẤP ĐỘ 4 - ĐỘT PHÁ",
+          "levelRequired": 4,
+          "standardReward": {
+            "label": "+1,000 PP",
+            "value": 1000
+          },
+          "premiumReward": {
+            "label": "👑 +7,500 PP",
+            "value": 7500
+          }
+        },
+        {
+          "id": "tier_5",
+          "name": "CẤP ĐỘ 5 - THẦN ĐỒNG S88",
+          "levelRequired": 5,
+          "standardReward": {
+            "label": "🎓 +2,000 PP",
+            "value": 2000
+          },
+          "premiumReward": {
+            "label": "👑 🖼️ Siêu Khung Cyber Xanh",
+            "value": 15000,
+            "frame": "cyber-ring"
+          }
+        }
+      ]
+    },
+    "shop_items": [
+      {
+        "id": "frame_gold",
+        "name": "Khung Hoàng Gia Gold",
+        "type": "frame",
+        "price": 15000,
+        "value": "gold-ring",
+        "desc": "Khung Avatar mạ vàng ròng 24K óng ánh sang trọng bậc nhất."
+      },
+      {
+        "id": "frame_neon",
+        "name": "Khung Cầu Vồng Neon",
+        "type": "frame",
+        "price": 25000,
+        "value": "neon-ring",
+        "desc": "Khung Neon nhấp nháy đa sắc chuyển động chuẩn 120 FPS."
+      },
+      {
+        "id": "frame_cyber",
+        "name": "Khung Hologram Cyberpunk",
+        "type": "frame",
+        "price": 50000,
+        "value": "cyber-ring",
+        "desc": "Khung ảnh ba chiều đậm chất khoa học viễn tưởng siêu tương lai."
+      },
+      {
+        "id": "title_academic",
+        "name": "Danh Hiệu: Chúa Tể Học Thuật",
+        "type": "title",
+        "price": 30000,
+        "value": "Chúa Tể Học Thuật",
+        "desc": "Danh hiệu tối thượng dành cho học bá có công lực phi phàm."
+      },
+      {
+        "id": "title_investor",
+        "name": "Danh Hiệu: Ông Trùm Đầu Tư",
+        "type": "title",
+        "price": 40000,
+        "value": "Ông Trùm Đầu Tư",
+        "desc": "Hiển thị danh hiệu quý tộc của tay chơi thao túng Sàn Vàng."
+      },
+      {
+        "id": "title_casino",
+        "name": "Danh Hiệu: Thần Bài Las Vegas",
+        "type": "title",
+        "price": 80000,
+        "value": "Thần Bài Las Vegas",
+        "desc": "Khẳng định vị thế ông hoàng đỏ đen thống trị sòng bài S88."
+      },
+      {
+        "id": "title_vip",
+        "name": "Danh Hiệu: Đại Gia Học Đường",
+        "type": "title",
+        "price": 100000,
+        "value": "Đại Gia Học Đường",
+        "desc": "Tôn vinh sinh viên sở hữu khối lượng tài sản PP vô địch thiên hạ."
+      }
+    ]
+  },
+  "gold_market": {
+    "price": 120000,
+    "oldPrice": 118500,
+    "high24h": 125000,
+    "low24h": 115000,
+    "volumeBuy": 35000,
+    "volumeSell": 24000,
+    "history": [116000, 117500, 118000, 119500, 118500, 120000],
+    "lastUpdate": 1787130000000,
+    "statusText": "Thị trường ổn định, lực mua tốt",
+    "statusColor": "#00ff80",
+    "updateTimeString": "12:00:00"
+  },
+  "global_chat": {
+    "msg_001": {
+      "senderId": "SYSTEM_ANNOUNCER",
+      "senderName": "HỆ THỐNG S88",
+      "senderAvatar": "",
+      "senderTitle": "CHÀO MỪNG",
+      "message": "Chào mừng tất cả các chiến binh S88 đến với S-System Academic Portal! Chúc các bạn học tập tốt và gặt hái nhiều PP!",
+      "time": "00:00",
+      "timestamp": 1787130000000
+    }
+  },
+  "users": {
+    "student_1": {
+      "avatar": "https://api.dicebear.com/7.x/pixel-art/svg?seed=A",
+      "class": "S88-A",
+      "classKey": "S88-A",
+      "locked": false,
+      "name": "Nguyễn Văn A",
+      "pass": "123456",
+      "pp": 150000,
+      "role": "STUDENT",
+      "sem": 1,
+      "year": 1,
+      "level": 1,
+      "xp": 0,
+      "isPremiumBattlePass": false,
+      "activeFrame": "gold-ring",
+      "inventory": {
+        "frames": ["gold-ring"],
+        "titles": ["Chúa Tể Học Thuật"]
+      },
+      "stats": [9, 8, 9, 10, 8]
+    },
+    "teacher_1": {
+      "avatar": "https://api.dicebear.com/7.x/pixel-art/svg?seed=Teacher",
+      "class": "ALL",
+      "classKey": "ALL",
+      "locked": false,
+      "name": "Giáo Viên S88",
+      "pass": "admin88",
+      "pp": 99999999,
+      "role": "TEACHER",
+      "sem": 1,
+      "year": 1,
+      "stats": [10, 10, 10, 10, 10]
+    }
+  }
+}

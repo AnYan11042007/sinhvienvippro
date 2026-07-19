@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-red: #ff003c;
+  --color-neon-gold: #ffd700;
+  --color-neon-blue: #00f0ff;
+  --color-neon-pink: #ff00ff;
+  --color-neon-green: #00ff80;
+  --color-bg-deep: #050608;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+:root { 
+    --bg-deep: #050608; 
+    --glass-bg: rgba(13, 17, 23, 0.75); 
+    --border-glow: rgba(255, 255, 255, 0.08); 
+    --neon-red: #ff003c; 
+    --neon-gold: #ffd700; 
+    --neon-blue: #00f0ff; 
+    --neon-pink: #ff00ff; 
+    --neon-green: #00ff80; 
+    --text-main: #e6edf3; 
+    --text-muted: #8b949e; 
+}
+
+body { 
+    margin: 0; 
+    font-family: 'Inter', sans-serif; 
+    background: var(--bg-deep); 
+    color: var(--text-main); 
+    overflow-x: hidden; 
+}
+
+/* Global Centered Overlay for Modals */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    padding: 12px;
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; } 
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); } 
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; } 
+::-webkit-scrollbar-thumb:hover { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+
+/* Matrix scanline background */
+.bg-matrix { 
+    position: fixed; inset: 0; z-index: -2; 
+    background: radial-gradient(circle at 50% 0%, #160a1a 0%, #050608 80%); 
+    background-image: linear-gradient(rgba(255,0,60,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,60,0.02) 1px, transparent 1px); 
+    background-size: 40px 40px; 
+}
+
+.scanlines { 
+    position: fixed; inset: 0; z-index: 10000; pointer-events: none; 
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.08)); 
+    background-size: 100% 4px; opacity: 0.3; 
+}
+
+/* Pulsing background glow representing heat or game excitement */
+.fire-particles {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: radial-gradient(circle at 50% 100%, rgba(255, 69, 0, 0.12) 0%, transparent 60%);
+    animation: pulseFire 5s infinite alternate ease-in-out;
+}
+
+@keyframes pulseFire {
+    0% { opacity: 0.4; transform: scale(1); }
+    100% { opacity: 0.7; transform: scale(1.03); }
+}
+
+/* Glass Panels with neon borders */
+.glass-box { 
+    background: var(--glass-bg); 
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); 
+    border: 1px solid var(--border-glow); border-radius: 14px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 0 20px rgba(255,255,255,0.02); 
+    transition: transform 0.3s ease, border-color 0.3s ease; 
+}
+
+/* Text glow effects */
+.text-glow-red { text-shadow: 0 0 12px rgba(255,0,60,0.7); } 
+.text-glow-gold { text-shadow: 0 0 12px rgba(255,215,0,0.7); } 
+.text-glow-blue { text-shadow: 0 0 12px rgba(0,240,255,0.7); } 
+.text-glow-pink { text-shadow: 0 0 12px rgba(255,0,255,0.7); } 
+.text-glow-green { text-shadow: 0 0 12px rgba(0,255,128,0.7); }
+
+/* Glitched neon text headers */
+.brand-glitch { 
+    font-family: 'JetBrains Mono', monospace; 
+    font-weight: 900; 
+    letter-spacing: 2px; 
+    text-transform: uppercase; 
+    text-shadow: 3px 3px var(--neon-red), -3px -3px var(--neon-blue); 
+} 
+
+/* Dynamic scale in on load */
+@keyframes popIn3D { 
+  0% { opacity: 0; transform: rotateX(15deg) translateY(-30px) scale(0.9); } 
+  100% { opacity: 1; transform: rotateX(0deg) translateY(0) scale(1); } 
+}
+
+.login-panel { 
+    padding: 35px; 
+    width: 100%;
+    max-width: 420px;
+    text-align: center; 
+    border-top: 4px solid var(--neon-red); 
+    animation: popIn3D 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+    box-shadow: 0 30px 60px rgba(0,0,0,0.9), inset 0 0 20px rgba(255,255,255,0.05); 
+}
+
+/* Pulse Glow Animation */
+.glow-pulse { animation: glowPulse 2s infinite; } 
+@keyframes glowPulse { 
+  0% { text-shadow: 0 0 10px currentColor; filter: brightness(1); } 
+  50% { text-shadow: 0 0 25px currentColor; filter: brightness(1.2); } 
+  100% { text-shadow: 0 0 10px currentColor; filter: brightness(1); } 
+}
+
+/* Shaking cup for TaiXiu and screen shake for FC Mobile Goals */
+.shake-anim { animation: shakeCup 0.3s ease-in-out infinite; } 
+@keyframes shakeCup { 
+  0% { transform: translate(3px, 3px) rotate(0deg); } 
+  25% { transform: translate(-3px, -3px) rotate(-2deg); } 
+  50% { transform: translate(-3px, 3px) rotate(2deg); } 
+  75% { transform: translate(3px, -3px) rotate(-2deg); } 
+  100% { transform: translate(3px, 3px) rotate(0deg); } 
+}
+
+.shake-screen { animation: shakeScreen 0.5s ease-in-out; }
+@keyframes shakeScreen {
+    0% { transform: translate(2px, 2px) rotate(0deg); }
+    10% { transform: translate(-2px, -3px) rotate(-1deg); }
+    20% { transform: translate(-4px, 0px) rotate(1deg); }
+    30% { transform: translate(4px, 3px) rotate(0deg); }
+    40% { transform: translate(2px, -2px) rotate(1deg); }
+    50% { transform: translate(-2px, 3px) rotate(-1deg); }
+    60% { transform: translate(-4px, 2px) rotate(0deg); }
+    70% { transform: translate(4px, 2px) rotate(-1deg); }
+    80% { transform: translate(-2px, -2px) rotate(1deg); }
+    90% { transform: translate(2px, 3px) rotate(0deg); }
+    100% { transform: translate(2px, -3px) rotate(-1deg); }
+}
+
+/* Card effects in games */
+.tl-card { 
+    width: 75px; 
+    height: 110px; 
+    background: #ffffff; 
+    border-radius: 8px; 
+    border: 1px solid #c0c0c0; 
+    box-shadow: -4px 6px 12px rgba(0,0,0,0.5); 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: space-between;
+    padding: 8px 0; 
+    cursor: pointer; 
+    transition: transform 0.15s ease, border-color 0.15s ease; 
+    user-select: none; 
+}
+.tl-card:hover { transform: translateY(-12px) !important; z-index: 20; }
+.tl-card.selected { transform: translateY(-24px) !important; border: 3px solid var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); z-index: 100; }
+.tl-card .rank { font-size: 28px; font-weight: 900; line-height: 1; font-family: 'JetBrains Mono', monospace; } 
+.tl-card .suit { font-size: 34px; line-height: 1; }
+.tl-card.red-suit { color: #d32f2f; } 
+.tl-card.black-suit { color: #111111; }
+
+.tl-card-back { 
+    width: 32px; 
+    height: 48px; 
+    background: repeating-linear-gradient(45deg, #b71c1c, #b71c1c 4px, #d32f2f 4px, #d32f2f 8px); 
+    border: 2px solid #ffffff; 
+    border-radius: 4px; 
+    display: inline-block; 
+    box-shadow: -2px 2px 5px rgba(0,0,0,0.5); 
+}
+
+.tl-played-card { 
+    animation: throwCard 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6); 
+    opacity: 0; 
+}
+@keyframes throwCard { 
+    0% { transform: scale(0.3) translate(0, 150px) rotate(0deg); opacity: 0; } 
+    100% { transform: scale(1) translate(0, 0) rotate(var(--rot, 0deg)); opacity: 1; } 
+}
+
+/* Animations for oẳn tù tì */
+.rps-hand { 
+    font-size: 70px; 
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8)); 
+    transition: transform 0.3s; 
+    animation: floatRps 2s infinite ease-in-out; 
+}
+.rps-hand.drop { 
+    animation: dropRps 0.5s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+}
+@keyframes floatRps { 
+    0%, 100% { transform: translateY(0); } 
+    50% { transform: translateY(-12px); } 
+}
+@keyframes dropRps { 
+    0% { transform: translateY(-80px) scale(1.4); opacity: 0; } 
+    100% { transform: translateY(0) scale(1); opacity: 1; } 
+}
+
+/* Highlighted active multiplayer player turn indicator */
+@keyframes activeTurnPulse {
+  0% { box-shadow: 0 0 10px var(--neon-gold); border-color: var(--neon-gold); }
+  50% { box-shadow: 0 0 25px var(--neon-gold); border-color: #ffffff; }
+  100% { box-shadow: 0 0 10px var(--neon-gold); border-color: var(--neon-gold); }
+}
+.active-player-pulse {
+  animation: activeTurnPulse 1.5s infinite ease-in-out;
+}
